@@ -5,52 +5,53 @@
 window.SemiSupplyGraph = (function () {
   const NODES = {
     // Col 1: 設備、矽晶圓、化學材料與 HBM 記憶體 (x = 24, w = 196)
-    ASML:        { x: 24,  y: 28,  w: 196, h: 62, col: 1, role: "EUV 微影曝光機獨家設備" },
-    "8035.T":    { x: 24,  y: 104, w: 196, h: 62, col: 1, role: "塗佈顯影 / 蝕刻設備龍頭" },
-    "6146.T":    { x: 24,  y: 180, w: 196, h: 62, col: 1, role: "CoWoS / HBM 晶圓切割研磨" },
-    "3131":      { x: 24,  y: 256, w: 196, h: 62, col: 1, role: "CoWoS 濕製程先進封裝設備" },
-    "4063.T":    { x: 24,  y: 332, w: 196, h: 62, col: 1, role: "12吋矽晶圓與 EUV 光阻龍頭" },
-    "6488":      { x: 24,  y: 408, w: 196, h: 62, col: 1, role: "12吋半導體矽晶圓材料" },
-    "000660.KS": { x: 24,  y: 484, w: 196, h: 62, col: 1, role: "全球 HBM3E 市占第一霸主" },
-    MU:          { x: 24,  y: 560, w: 196, h: 62, col: 1, role: "HBM3E 與 DRAM 指標廠" },
+    ASML:        { x: 24,  y: 44,  w: 196, h: 60, col: 1, role: "EUV 微影曝光機獨家設備" },
+    "8035.T":    { x: 24,  y: 116, w: 196, h: 60, col: 1, role: "塗佈顯影 / 蝕刻設備龍頭" },
+    "6146.T":    { x: 24,  y: 188, w: 196, h: 60, col: 1, role: "CoWoS / HBM 晶圓切割研磨" },
+    "3131":      { x: 24,  y: 260, w: 196, h: 60, col: 1, role: "CoWoS 濕製程先進封裝設備" },
+    "4063.T":    { x: 24,  y: 332, w: 196, h: 60, col: 1, role: "12吋矽晶圓與 EUV 光阻龍頭" },
+    "6488":      { x: 24,  y: 404, w: 196, h: 60, col: 1, role: "12吋半導體矽晶圓材料" },
+    "000660.KS": { x: 24,  y: 476, w: 196, h: 60, col: 1, role: "全球 HBM3E 市占第一霸主" },
+    MU:          { x: 24,  y: 548, w: 196, h: 60, col: 1, role: "HBM3E 與 DRAM 指標廠" },
 
     // Col 2: 晶圓代工中樞、三星 IDM 與 Intel (x = 344)
-    TSM:         { x: 344, y: 44,  w: 192, h: 64, col: 2, role: "台積電美股 ADR 定價指標" },
-    "2330":      { x: 334, y: 160, w: 212, h: 88, col: 2, role: "全球先進製程與 CoWoS 核心中樞", hub: true },
-    "005930.KS": { x: 344, y: 304, w: 192, h: 68, col: 2, role: "DRAM/HBM 與 GAA 先進代工" },
-    INTC:        { x: 344, y: 420, w: 192, h: 68, col: 2, role: "x86 處理器與 IDM 晶圓代工" },
-    "2303":      { x: 344, y: 536, w: 192, h: 66, col: 2, role: "成熟與特殊製程晶圓代工" },
+    TSM:         { x: 344, y: 52,  w: 192, h: 62, col: 2, role: "台積電美股 ADR 定價指標" },
+    "2330":      { x: 334, y: 162, w: 212, h: 86, col: 2, role: "全球先進製程與 CoWoS 核心中樞", hub: true },
+    "005930.KS": { x: 344, y: 298, w: 192, h: 66, col: 2, role: "DRAM/HBM 與 GAA 先進代工" },
+    INTC:        { x: 344, y: 410, w: 192, h: 66, col: 2, role: "x86 處理器與 IDM 晶圓代工" },
+    "2303":      { x: 344, y: 522, w: 192, h: 64, col: 2, role: "成熟與特殊製程晶圓代工" },
 
     // Col 3: 美台 IC 設計與 AI 晶片大廠 (x = 674)
-    NVDA:        { x: 674, y: 32,  w: 188, h: 64, col: 3, role: "AI GPU 與加速運算龍頭" },
-    AMD:         { x: 674, y: 114, w: 188, h: 64, col: 3, role: "資料中心 CPU / Instinct GPU" },
-    AVGO:        { x: 674, y: 196, w: 188, h: 64, col: 3, role: "AI ASIC 與高速網通晶片" },
-    "3661":      { x: 674, y: 278, w: 188, h: 64, col: 3, role: "雲端 AI ASIC 客製設計服務" },
-    "3443":      { x: 674, y: 360, w: 188, h: 64, col: 3, role: "台積電轉投資 ASIC / IP" },
-    "2454":      { x: 674, y: 442, w: 188, h: 64, col: 3, role: "旗艦手機 SoC 與邊緣 AI" },
-    "2379":      { x: 674, y: 524, w: 188, h: 64, col: 3, role: "高速網通與 Wi-Fi 7 IC" },
+    NVDA:        { x: 674, y: 48,  w: 188, h: 62, col: 3, role: "AI GPU 與加速運算龍頭" },
+    AMD:         { x: 674, y: 126, w: 188, h: 62, col: 3, role: "資料中心 CPU / Instinct GPU" },
+    AVGO:        { x: 674, y: 204, w: 188, h: 62, col: 3, role: "AI ASIC 與高速網通晶片" },
+    "3661":      { x: 674, y: 282, w: 188, h: 62, col: 3, role: "雲端 AI ASIC 客製設計服務" },
+    "3443":      { x: 674, y: 360, w: 188, h: 62, col: 3, role: "台積電轉投資 ASIC / IP" },
+    "2454":      { x: 674, y: 438, w: 188, h: 62, col: 3, role: "旗艦手機 SoC 與邊緣 AI" },
+    "2379":      { x: 674, y: 516, w: 188, h: 62, col: 3, role: "高速網通與 Wi-Fi 7 IC" },
 
     // Col 4: 封裝 / 測試設備 / 測試代工與費半 (x = 998)
-    "^SOX":      { x: 998, y: 54,  w: 210, h: 68, col: 4, role: "費城半導體景氣總指標" },
-    "3711":      { x: 998, y: 198, w: 210, h: 74, col: 4, role: "全球最大封測與 CoWoS 外溢" },
-    "6857.T":    { x: 998, y: 344, w: 210, h: 74, col: 4, role: "AI GPU / HBM 自動測試機台" },
-    "2449":      { x: 998, y: 490, w: 210, h: 74, col: 4, role: "AI GPU / ASIC 高階測試核心" },
+    "^SOX":      { x: 998, y: 58,  w: 210, h: 66, col: 4, role: "費城半導體景氣總指標" },
+    "3711":      { x: 998, y: 196, w: 210, h: 72, col: 4, role: "全球最大封測與 CoWoS 外溢" },
+    "6857.T":    { x: 998, y: 340, w: 210, h: 72, col: 4, role: "AI GPU / HBM 自動測試機台" },
+    "2449":      { x: 998, y: 484, w: 210, h: 72, col: 4, role: "AI GPU / ASIC 高階測試核心" },
   };
 
   // type: 'supply' (設備材料/HBM/測試機供應), 'mfg' (投片代工/封測流), 'sync' (資本連動與競爭)
   const EDGES = [
-    // 歐美日台設備與材料 -> 晶圓製造 / 封測
+    // 歐美日台設備與材料 -> 晶圓製造 / 記憶體 / 封測
     { from: "ASML",      to: "2330",      type: "supply", label: "供應 EUV 極紫外光微影設備（3nm/2nm 關鍵）" },
     { from: "ASML",      to: "005930.KS", type: "supply", label: "供應先進製程 EUV 微影曝光設備" },
     { from: "ASML",      to: "INTC",      type: "supply", label: "供應 High-NA EUV 新世代微影曝光設備（18A/14A）" },
     { from: "8035.T",    to: "2330",      type: "supply", label: "日本東京威力科創供應塗佈顯影（Coater/Developer）與蝕刻機台" },
     { from: "8035.T",    to: "005930.KS", type: "supply", label: "供應先進製程與高階 DRAM 蝕刻與成膜設備" },
+    { from: "8035.T",    to: "000660.KS", type: "supply", label: "供應高階 DRAM / HBM 前段蝕刻與沉積設備" },
     { from: "8035.T",    to: "INTC",      type: "supply", label: "供應先進晶圓製造關鍵前段設備" },
     { from: "6146.T",    to: "2330",      type: "supply", label: "日本 DISCO 供應 CoWoS / 3D IC 晶圓薄化與切割機台" },
     { from: "6146.T",    to: "000660.KS", type: "supply", label: "供應 HBM 堆疊晶圓超薄研磨與切割設備" },
-    { from: "6146.T",    to: "3711",      type: "supply", label: "供應高階封測晶圓切割研磨機台", arcY: 16 },
+    { from: "6146.T",    to: "3711",      type: "supply", label: "供應高階封測晶圓切割研磨機台", corridorY: 16 },
     { from: "3131",      to: "2330",      type: "supply", label: "供應 CoWoS 先進封裝濕製程清洗設備" },
-    { from: "3131",      to: "3711",      type: "supply", label: "供應高階封測濕製程設備", arcY: 646 },
+    { from: "3131",      to: "3711",      type: "supply", label: "供應高階封測濕製程設備", corridorY: 632 },
     { from: "4063.T",    to: "2330",      type: "supply", label: "日本信越化學供應 12 吋晶圓與 EUV 先進光阻劑" },
     { from: "4063.T",    to: "005930.KS", type: "supply", label: "供應先進製程光阻劑與 12 吋矽晶圓" },
     { from: "6488",      to: "2330",      type: "supply", label: "供應 12 吋拋光與磊晶矽晶圓" },
@@ -59,9 +60,9 @@ window.SemiSupplyGraph = (function () {
 
     // 韓美 HBM 記憶體 -> CoWoS & AI GPU
     { from: "000660.KS", to: "2330",      type: "supply", label: "HBM3E 記憶體交由台積電 CoWoS 先進封裝整合" },
-    { from: "000660.KS", to: "NVDA",      type: "supply", label: "NVIDIA AI GPU 頭號 HBM3 / HBM3E 供應商", arcY: 12 },
+    { from: "000660.KS", to: "NVDA",      type: "supply", label: "NVIDIA AI GPU 頭號 HBM3 / HBM3E 供應商", corridorY: 26 },
     { from: "MU",        to: "2330",      type: "supply", label: "HBM3E 記憶體堆疊進入台積電 CoWoS 封裝" },
-    { from: "MU",        to: "NVDA",      type: "supply", label: "供應 HBM3E 高頻寬記憶體至 AI GPU 平台", arcY: 662 },
+    { from: "MU",        to: "NVDA",      type: "supply", label: "供應 HBM3E 高頻寬記憶體至 AI GPU 平台", corridorY: 644 },
 
     // IC 設計 -> 晶圓代工 (委外製造)
     { from: "NVDA",      to: "2330",      type: "mfg",    label: "4nm/3nm AI GPU 晶圓代工與 CoWoS 先進封裝主力客戶" },
@@ -73,10 +74,11 @@ window.SemiSupplyGraph = (function () {
     { from: "2379",      to: "2330",      type: "mfg",    label: "高階網通與高速傳輸控制晶片投片" },
     { from: "2379",      to: "2303",      type: "mfg",    label: "成熟製程網通與週邊晶片晶圓代工" },
 
-    // 晶圓代工 / IC 設計 / 日本測試設備 -> 封裝測試
-    { from: "2330",      to: "3711",      type: "mfg",    label: "CoWoS 先進封裝產能外溢與 oS 端封裝合作", arcY: 146 },
+    // 晶圓代工 / IC 設計 / 日本測試設備 -> 封裝測試 & HBM 測試
+    { from: "2330",      to: "3711",      type: "mfg",    label: "CoWoS 先進封裝產能外溢與 oS 端封裝合作", corridorY: 193, gapOnly: true },
     { from: "6857.T",    to: "2449",      type: "supply", label: "日本愛德萬提供 AI GPU/ASIC 自動測試機台（SoC Tester）" },
     { from: "6857.T",    to: "3711",      type: "supply", label: "提供高階封測與系統級測試設備" },
+    { from: "6857.T",    to: "000660.KS", type: "supply", label: "提供韓國 HBM / 高速記憶體晶圓與成品測試機台", corridorY: 656 },
     { from: "NVDA",      to: "6857.T",    type: "mfg",    label: "Blackwell / Rubin 高複雜度 GPU 拉動測試機台需求" },
     { from: "NVDA",      to: "2449",      type: "mfg",    label: "AI GPU 晶圓測試與成品測試核心夥伴" },
     { from: "AMD",       to: "3711",      type: "mfg",    label: "高階運算晶片委外封裝測試" },
@@ -91,21 +93,22 @@ window.SemiSupplyGraph = (function () {
     { from: "INTC",      to: "2330",      type: "mfg",    label: "部分高階運算 Tile 委由台積電代工，並與台積電於晶圓代工競爭" },
     { from: "005930.KS", to: "2330",      type: "sync",   label: "先進製程晶圓代工（2nm/3nm GAA vs N2/N3）直接競爭對手" },
     { from: "005930.KS", to: "000660.KS", type: "sync",   label: "韓國記憶體雙雄，共同主導全球 HBM 與 DRAM 報價週期" },
+    { from: "005930.KS", to: "MU",        type: "sync",   label: "全球 DRAM / HBM 三大記憶體寡占競爭與週期連動" },
     { from: "INTC",      to: "AMD",       type: "sync",   label: "x86 伺服器與桌機處理器直接競爭，市占消長連動股價" },
     { from: "2330",      to: "TSM",       type: "sync",   label: "台股現貨與美國 ADR (1 ADR = 5 股) 溢折價即時連動" },
-    { from: "TSM",       to: "^SOX",      type: "sync",   label: "台積電 ADR 為費城半導體指數關鍵權值成分", arcY: 22 },
+    { from: "TSM",       to: "^SOX",      type: "sync",   label: "台積電 ADR 為費城半導體指數關鍵權值成分", corridorY: 36 },
     { from: "NVDA",      to: "^SOX",      type: "sync",   label: "AI GPU 龍頭帶動費半指數多空走勢" },
   ];
 
   const PRESETS = {
     all: { label: "台美日韓全景", ids: null },
-    ai: {
-      label: "AI 伺服器與 HBM 鏈",
-      ids: new Set(["NVDA", "AVGO", "3661", "3443", "2330", "TSM", "000660.KS", "MU", "8035.T", "6857.T", "6146.T", "3131", "ASML", "2449", "3711"]),
-    },
     jp_kr: {
       label: "日韓設備與記憶體鏈",
       ids: new Set(["8035.T", "6857.T", "4063.T", "6146.T", "005930.KS", "000660.KS", "2330", "6488", "2449", "3711", "NVDA"]),
+    },
+    ai: {
+      label: "AI 伺服器與 HBM 鏈",
+      ids: new Set(["NVDA", "AVGO", "3661", "3443", "2330", "TSM", "000660.KS", "MU", "8035.T", "6857.T", "6146.T", "3131", "ASML", "2449", "3711"]),
     },
     mobile: {
       label: "手機與網通 IC 鏈",
@@ -155,13 +158,39 @@ window.SemiSupplyGraph = (function () {
     const bx = b.x + b.w / 2;
     const by = b.y + b.h / 2;
 
-    if (e.arcY !== undefined) {
-      const startX = a.col < b.col ? a.x + a.w : ax;
-      const startY = ay;
-      const endX = a.col < b.col ? b.x : bx;
-      const endY = by;
-      const midX = (startX + endX) / 2;
-      return `M ${startX} ${startY} Q ${midX} ${e.arcY}, ${endX} ${endY}`;
+    // 繞行廊道 (PCB 導線折角，避開中間欄位方框)
+    if (e.corridorY !== undefined) {
+      if (e.gapOnly) {
+        const x1 = a.x + a.w;
+        const x2 = b.x;
+        const midX = (x1 + x2) / 2;
+        return `M ${x1} ${ay} C ${midX} ${e.corridorY}, ${midX} ${e.corridorY}, ${x2} ${by}`;
+      }
+      const goRight = a.col <= b.col;
+      const x1 = goRight ? a.x + a.w : a.x;
+      const x2 = goRight ? b.x : b.x + b.w;
+      const stub1 = goRight ? x1 + 26 : x1 - 26;
+      const stub2 = goRight ? x2 - 26 : x2 + 26;
+      const r = 10;
+      const cy = e.corridorY;
+      const dirX1 = stub1 > x1 ? 1 : -1;
+      const dirY1 = cy > ay ? 1 : -1;
+      const dirX2 = x2 > stub2 ? 1 : -1;
+      const dirY2 = by > cy ? 1 : -1;
+      const dirSpan = stub2 > stub1 ? 1 : -1;
+
+      return [
+        `M ${x1} ${ay}`,
+        `L ${stub1 - dirX1 * r} ${ay}`,
+        `Q ${stub1} ${ay} ${stub1} ${ay + dirY1 * r}`,
+        `L ${stub1} ${cy - dirY1 * r}`,
+        `Q ${stub1} ${cy} ${stub1 + dirSpan * r} ${cy}`,
+        `L ${stub2 - dirSpan * r} ${cy}`,
+        `Q ${stub2} ${cy} ${stub2} ${cy + dirY2 * r}`,
+        `L ${stub2} ${by - dirY2 * r}`,
+        `Q ${stub2} ${by} ${stub2 + dirX2 * r} ${by}`,
+        `L ${x2} ${by}`,
+      ].join(" ");
     }
 
     if (a.col === b.col) {
@@ -219,7 +248,7 @@ window.SemiSupplyGraph = (function () {
     };
 
     let svg = `
-      <svg class="supply-svg" viewBox="0 0 1236 686" role="img" aria-label="台美日韓半導體供應鏈關係圖">
+      <svg class="supply-svg" viewBox="0 0 1236 678" role="img" aria-label="台美日韓半導體供應鏈關係圖">
         <defs>
           <marker id="arrow-supply" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
             <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#fbbf24" />
@@ -232,14 +261,14 @@ window.SemiSupplyGraph = (function () {
           </marker>
         </defs>
 
-        <rect x="10"  y="10" width="224" height="664" rx="14" fill="rgba(15,23,42,0.42)" stroke="rgba(251,191,36,0.14)" />
-        <rect x="318" y="10" width="244" height="664" rx="14" fill="rgba(15,23,42,0.5)" stroke="rgba(56,189,248,0.22)" />
-        <rect x="654" y="10" width="228" height="664" rx="14" fill="rgba(15,23,42,0.42)" stroke="rgba(56,189,248,0.14)" />
-        <rect x="978" y="10" width="248" height="664" rx="14" fill="rgba(15,23,42,0.42)" stroke="rgba(167,139,250,0.16)" />
+        <rect x="10"  y="36" width="224" height="586" rx="14" fill="rgba(15,23,42,0.42)" stroke="rgba(251,191,36,0.14)" />
+        <rect x="318" y="36" width="244" height="586" rx="14" fill="rgba(15,23,42,0.5)" stroke="rgba(56,189,248,0.22)" />
+        <rect x="654" y="36" width="228" height="586" rx="14" fill="rgba(15,23,42,0.42)" stroke="rgba(56,189,248,0.14)" />
+        <rect x="978" y="36" width="248" height="586" rx="14" fill="rgba(15,23,42,0.42)" stroke="rgba(167,139,250,0.16)" />
     `;
 
     colHeaders.forEach((h) => {
-      svg += `<text x="${h.x}" y="660" text-anchor="middle" fill="#94a3b8" font-size="11.5" font-weight="700" font-family="Inter, Noto Sans TC, sans-serif">${h.title}</text>`;
+      svg += `<text x="${h.x}" y="614" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="700" font-family="Inter, Noto Sans TC, sans-serif">${h.title}</text>`;
     });
 
     const orderedEdges = [
@@ -295,7 +324,7 @@ window.SemiSupplyGraph = (function () {
           <text x="${pos.x + 11}" y="${pos.y + 20}" fill="#f8fafc" font-size="${pos.hub ? 14 : 12.5}" font-weight="800" font-family="Inter, Noto Sans TC, sans-serif">
             ${shortName} <tspan fill="#38bdf8" font-size="10.5" font-family="JetBrains Mono, Consolas, monospace">${id}</tspan>
           </text>
-          <text x="${pos.x + 11}" y="${pos.y + 37}" fill="#94a3b8" font-size="10" font-family="Inter, Noto Sans TC, sans-serif">
+          <text x="${pos.x + 11}" y="${pos.y + 36}" fill="#94a3b8" font-size="10" font-family="Inter, Noto Sans TC, sans-serif">
             ${pos.role}
           </text>
           <text x="${pos.x + 11}" y="${pos.y + pos.h - 9}" fill="#cbd5e1" font-size="11" font-weight="700" font-family="JetBrains Mono, Consolas, monospace">
@@ -323,9 +352,13 @@ window.SemiSupplyGraph = (function () {
           ${activeFocusId ? `<button class="seg-pill" id="sgClearFocusBtn" style="border-color:var(--amber);color:var(--amber)">✕ 清除鎖定 (${activeFocusId})</button>` : ""}
         </div>
         <div class="sg-legend">
-          <span><i class="lg-line" style="background:#38bdf8"></i> 委外投片 / 封測流</span>
-          <span><i class="lg-line lg-dash" style="border-color:#fbbf24"></i> 設備 / 矽晶圓 / HBM / 測試機供應</span>
-          <span><i class="lg-line lg-dot" style="border-color:#a78bfa"></i> 市場連動 / 競爭對手</span>
+          <span><strong class="mono" style="color:#38bdf8">[TW]</strong> 台灣</span>
+          <span><strong class="mono" style="color:#c4b5fd">[US]</strong> 美國</span>
+          <span><strong class="mono" style="color:#f9a8d4">[JP]</strong> 日本</span>
+          <span><strong class="mono" style="color:#fde047">[KR]</strong> 韓國</span>
+          <span><i class="lg-line" style="background:#38bdf8"></i> 委外投片/封測</span>
+          <span><i class="lg-line lg-dash" style="border-color:#fbbf24"></i> 設備/材料/HBM</span>
+          <span><i class="lg-line lg-dot" style="border-color:#a78bfa"></i> 連動/競爭</span>
         </div>
       </div>
       <div class="sg-canvas-scroll">${svg}</div>
@@ -361,7 +394,7 @@ window.SemiSupplyGraph = (function () {
     if (inspectorEl) {
       if (!activeFocusId) {
         inspectorEl.innerHTML = `
-          <span style="color:var(--text-muted)">💡 <strong>台美日韓互動關係圖：</strong>點擊任一公司方框即可亮顯其上下游供應鏈與競爭連動關係（如點擊 <strong class="mono" style="color:#fde047">000660.KS 海力士</strong>、<strong class="mono" style="color:#f9a8d4">8035.T 東京威力科創</strong> 或 <strong class="mono" style="color:#38bdf8">2330 台積電</strong>）；雙擊可跳轉個股 K 線。</span>
+          <span style="color:var(--text-muted)">💡 <strong>台美日韓互動關係圖：</strong>點擊上方「<strong>日韓設備與記憶體鏈</strong>」或任一節點（如 <strong class="mono" style="color:#fde047">000660.KS SK海力士</strong>、<strong class="mono" style="color:#fde047">005930.KS 三星</strong>、<strong class="mono" style="color:#f9a8d4">8035.T 東京威力科創</strong>、<strong class="mono" style="color:#f9a8d4">6857.T 愛德萬</strong>）即可亮顯完整上下游連動；雙擊節點跳轉 K 線。</span>
         `;
       } else {
         const s = stocksById.get(activeFocusId);
