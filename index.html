@@ -140,6 +140,18 @@
             </div>
           </div>
 
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🏛️ 法人進出與主力籌碼動向（三大法人・融資券・集保千張大戶）</div>
+              <span id="chipsBadgeArea"></span>
+            </div>
+            <div id="chipsSummaryCard"></div>
+            <div class="chart-canvas-box" id="instiChartWrap" style="margin-top:12px">
+              <div class="chart-hud" id="instiHud"></div>
+              <canvas id="instiCanvas" class="chart-canvas"></canvas>
+            </div>
+          </div>
+
           <div class="diag-grid">
             <div class="card">
               <div class="card-header">
@@ -200,6 +212,8 @@
                 <th data-sort="ret_5d">5日 %</th>
                 <th data-sort="ret_20d">20日 %</th>
                 <th data-sort="ret_60d">60日 %</th>
+                <th data-sort="insti_5d">法人5日(張)</th>
+                <th data-sort="big1000_pct">千張大戶%</th>
                 <th data-sort="pe">本益比 P/E</th>
                 <th data-sort="pb">淨值比 P/B</th>
                 <th data-sort="yield">殖利率 %</th>
@@ -223,6 +237,7 @@
         <div class="compare-controls" id="finStockSelector"></div>
         <div id="finHeroWrap"></div>
         <div id="finRevenueMixBox" style="margin-top:14px"></div>
+        <div id="finChipsBox" style="margin-top:14px"></div>
       </div>
 
       <div class="fin-charts-grid">

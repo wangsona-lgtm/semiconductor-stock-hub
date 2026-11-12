@@ -110,6 +110,24 @@ def load_existing_financials_cache() -> Dict[str, Dict[str, Dict[str, Any]]]:
     return cache
 
 
+def load_existing_chips_cache() -> Dict[str, Dict[str, Any]]:
+    """保留既有 stocks.json 中的法人日線與前期 TDCC 集保大戶快照"""
+    cache: Dict[str, Dict[str, Any]] = {}
+    if not JSON_OUT_PATH.exists():
+        return cache
+    try:
+        with open(JSON_OUT_PATH, "r", encoding="utf-8") as f:
+            old = json.load(f)
+        for st in old.get("stocks", []):
+            sid = st.get("id")
+            ch = st.get("chips") or {}
+            if sid and ch:
+                cache[sid] = ch
+    except Exception:
+        pass
+    return cache
+
+
 def fetch_twse_valuations() -> Dict[str, Dict[str, Optional[float]]]:
     url = "https://www.twse.com.tw/exchangeReport/BWIBBU_ALL?response=json"
     result: Dict[str, Dict[str, Optional[float]]] = {}
@@ -229,7 +247,7 @@ def fetch_yahoo_summary(
     encoded_crumb = urllib.parse.quote(crumb, safe="")
     url = (
         f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{encoded_sym}"
-        f"?modules=financialData,defaultKeyStatistics,summaryDetail,calendarEvents&crumb={encoded_crumb}"
+        f"?modules=financialData,defaultKeyStatistics,summaryDetail,calendarEvents,majorHoldersBreakdown&crumb={encoded_crumb}"
     )
     try:
         payload = http_get_json(url, opener=opener, timeout=15)
@@ -238,6 +256,7 @@ def fetch_yahoo_summary(
         ks = res.get("defaultKeyStatistics") or {}
         sd = res.get("summaryDetail") or {}
         cal = res.get("calendarEvents") or {}
+        mhb = res.get("majorHoldersBreakdown") or {}
 
         earn_dates = [
             e.get("fmt") for e in ((cal.get("earnings") or {}).get("earningsDate") or []) if e.get("fmt")
@@ -249,6 +268,8 @@ def fetch_yahoo_summary(
         gm = parse_float(fd.get("grossMargins"))
         om = parse_float(fd.get("operatingMargins"))
         rev_g = parse_float(fd.get("revenueGrowth"))
+        inst_pct = parse_float(mhb.get("institutionsPercentHeld")) or parse_float(ks.get("heldPercentInstitutions"))
+        insiders_pct = parse_float(mhb.get("insidersPercentHeld")) or parse_float(ks.get("heldPercentInsiders"))
 
         return {
             "forward_pe": round(fpe, 2) if fpe is not None else None,
@@ -257,6 +278,8 @@ def fetch_yahoo_summary(
             "gross_margin": round(gm * 100.0, 2) if gm is not None else None,
             "operating_margin": round(om * 100.0, 2) if om is not None else None,
             "revenue_growth": round(rev_g * 100.0, 2) if rev_g is not None else None,
+            "inst_pct": round(inst_pct * 100.0, 2) if inst_pct is not None else None,
+            "insiders_pct": round(insiders_pct * 100.0, 2) if insiders_pct is not None else None,
             "earnings_date": earn_dates[0] if earn_dates else None,
             "financial_currency": fd.get("financialCurrency"),
         }
@@ -563,6 +586,390 @@ def fetch_yahoo_history(
     return [by_date[k] for k in sorted(by_date.keys())]
 
 
+def fetch_tdcc_shareholders(target_ids: set[str]) -> Dict[str, Dict[str, Any]]:
+    """從 TDCC 集保中心 OpenData (1-5) 取得週度千張大戶/400張大戶/散戶/總股東人數"""
+    url = "https://opendata.tdcc.com.tw/getOD.ashx?id=1-5"
+    per_stock: Dict[str, Dict[str, Any]] = {}
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            raw_text = resp.read().decode("utf-8", errors="replace")
+        for line in raw_text.splitlines():
+            parts = line.strip().split(",")
+            if len(parts) < 6:
+                continue
+            code = parts[1].strip()
+            if code not in target_ids:
+                continue
+            raw_d = parts[0].strip()
+            iso_d = f"{raw_d[:4]}-{raw_d[4:6]}-{raw_d[6:]}" if len(raw_d) == 8 and raw_d.isdigit() else raw_d
+            lvl = parse_float(parts[2])
+            holders = int(round(parse_float(parts[3]) or 0.0))
+            pct = parse_float(parts[5]) or 0.0
+            if lvl is None:
+                continue
+            lvl_i = int(lvl)
+            entry = per_stock.setdefault(
+                code,
+                {
+                    "date": iso_d,
+                    "total_holders": 0,
+                    "big1000_holders": 0,
+                    "big1000_pct": 0.0,
+                    "big400_holders": 0,
+                    "big400_pct": 0.0,
+                    "retail_pct": 0.0,
+                },
+            )
+            if lvl_i == 17:
+                entry["total_holders"] = holders
+            elif lvl_i == 15:
+                entry["big1000_holders"] = holders
+                entry["big1000_pct"] = round(pct, 2)
+                entry["big400_holders"] += holders
+                entry["big400_pct"] = round(entry["big400_pct"] + pct, 2)
+            elif lvl_i in (12, 13, 14):
+                entry["big400_holders"] += holders
+                entry["big400_pct"] = round(entry["big400_pct"] + pct, 2)
+            elif lvl_i in (1, 2):
+                entry["retail_pct"] = round(entry["retail_pct"] + pct, 2)
+        print(f"[OK] TDCC 集保大戶分布載入 {len(per_stock)} 檔台股半導體標的")
+    except Exception as e:
+        print(f"[WARN] TDCC 1-5 讀取失敗: {e}")
+    return per_stock
+
+
+def fetch_tw_insti_history(
+    twse_ids: set[str],
+    tpex_ids: set[str],
+    cached_chips: Dict[str, Dict[str, Any]],
+    max_days: int = 10,
+) -> Dict[str, List[Dict[str, Any]]]:
+    """擷取近 10 個交易日上市 (T86) 與上櫃 (dailyTrade) 三大法人買賣超 (單位: 張)"""
+    tz_tw = datetime.timezone(datetime.timedelta(hours=8))
+    today = datetime.datetime.now(tz=tz_tw).date()
+
+    by_stock: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for sid, ch in (cached_chips or {}).items():
+        for row in ch.get("insti_days") or []:
+            d = row.get("d")
+            if d:
+                by_stock.setdefault(sid, {})[d] = dict(row)
+
+    existing_dates = sorted({d for m in by_stock.values() for d in m.keys()})
+    recent_keep = set(existing_dates[-2:]) if len(existing_dates) >= 2 else set(existing_dates)
+
+    fetched_days = 0
+    for offset in range(0, 20):
+        dt = today - datetime.timedelta(days=offset)
+        if dt.weekday() >= 5:
+            continue
+        iso_d = dt.isoformat()
+        if iso_d in existing_dates and iso_d not in recent_keep and len(existing_dates) >= max_days:
+            fetched_days += 1
+            if fetched_days >= max_days:
+                break
+            continue
+
+        day_hit = False
+        yyyymmdd = dt.strftime("%Y%m%d")
+        slash_d = dt.strftime("%Y/%m/%d")
+
+        if twse_ids:
+            try:
+                url = f"https://www.twse.com.tw/rwd/zh/fund/T86?date={yyyymmdd}&selectType=ALLBUT0999&response=json"
+                data = http_get_json(url, timeout=14)
+                if data.get("stat") == "OK":
+                    for row in data.get("data") or []:
+                        if len(row) < 19:
+                            continue
+                        code = str(row[0]).strip()
+                        if code not in twse_ids:
+                            continue
+                        f_net = ((parse_float(row[4]) or 0.0) + (parse_float(row[7]) or 0.0)) / 1000.0
+                        t_net = (parse_float(row[10]) or 0.0) / 1000.0
+                        d_net = (parse_float(row[11]) or 0.0) / 1000.0
+                        tot_net = (parse_float(row[18]) or 0.0) / 1000.0
+                        by_stock.setdefault(code, {})[iso_d] = {
+                            "d": iso_d,
+                            "foreign": round(f_net, 1),
+                            "trust": round(t_net, 1),
+                            "dealer": round(d_net, 1),
+                            "total": round(tot_net, 1),
+                        }
+                        day_hit = True
+            except Exception:
+                pass
+
+        if tpex_ids:
+            try:
+                url = f"https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=AL&date={slash_d}&response=json"
+                data = http_get_json(url, timeout=14)
+                tables = data.get("tables") or []
+                rows = (tables[0].get("data") or []) if tables else []
+                if rows:
+                    for row in rows:
+                        if len(row) < 24:
+                            continue
+                        code = str(row[0]).strip()
+                        if code not in tpex_ids:
+                            continue
+                        f_net = (parse_float(row[10]) or 0.0) / 1000.0
+                        t_net = (parse_float(row[13]) or 0.0) / 1000.0
+                        d_net = (parse_float(row[22]) or 0.0) / 1000.0
+                        tot_net = (parse_float(row[23]) or 0.0) / 1000.0
+                        by_stock.setdefault(code, {})[iso_d] = {
+                            "d": iso_d,
+                            "foreign": round(f_net, 1),
+                            "trust": round(t_net, 1),
+                            "dealer": round(d_net, 1),
+                            "total": round(tot_net, 1),
+                        }
+                        day_hit = True
+            except Exception:
+                pass
+
+        if day_hit:
+            fetched_days += 1
+            if fetched_days >= max_days:
+                break
+        time.sleep(0.08)
+
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    for sid, dmap in by_stock.items():
+        dates_sorted = sorted(dmap.keys())[-max_days:]
+        out[sid] = [dmap[d] for d in dates_sorted]
+    print(f"[OK] 三大法人日線載入 {len(out)} 檔（近 {max_days} 交易日）")
+    return out
+
+
+def fetch_tw_margin_and_qfii(
+    twse_ids: set[str], tpex_ids: set[str]
+) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, float]]:
+    """擷取最新可得之上市/上櫃融資融券餘額與上市外資持股比率"""
+    tz_tw = datetime.timezone(datetime.timedelta(hours=8))
+    today = datetime.datetime.now(tz=tz_tw).date()
+    margin_map: Dict[str, Dict[str, Any]] = {}
+    qfii_map: Dict[str, float] = {}
+
+    got_twse_m = False
+    got_tpex_m = False
+    got_qfii = False
+
+    for offset in range(0, 6):
+        dt = today - datetime.timedelta(days=offset)
+        if dt.weekday() >= 5:
+            continue
+        iso_d = dt.isoformat()
+        yyyymmdd = dt.strftime("%Y%m%d")
+        slash_d = dt.strftime("%Y/%m/%d")
+
+        if not got_twse_m and twse_ids:
+            try:
+                url = f"https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date={yyyymmdd}&selectType=ALL&response=json"
+                data = http_get_json(url, timeout=14)
+                tables = data.get("tables") or []
+                rows = (tables[1].get("data") or []) if len(tables) > 1 else []
+                if rows:
+                    got_twse_m = True
+                    for row in rows:
+                        if len(row) < 14:
+                            continue
+                        code = str(row[0]).strip()
+                        if code not in twse_ids:
+                            continue
+                        m_prev = int(round(parse_float(row[5]) or 0.0))
+                        m_bal = int(round(parse_float(row[6]) or 0.0))
+                        m_lim = int(round(parse_float(row[7]) or 0.0))
+                        s_prev = int(round(parse_float(row[11]) or 0.0))
+                        s_bal = int(round(parse_float(row[12]) or 0.0))
+                        s_ratio = round((s_bal / m_bal) * 100.0, 2) if m_bal > 0 else 0.0
+                        m_util = round((m_bal / m_lim) * 100.0, 2) if m_lim > 0 else None
+                        margin_map[code] = {
+                            "date": iso_d,
+                            "margin_bal": m_bal,
+                            "margin_chg": m_bal - m_prev,
+                            "short_bal": s_bal,
+                            "short_chg": s_bal - s_prev,
+                            "short_ratio": s_ratio,
+                            "margin_util": m_util,
+                        }
+            except Exception:
+                pass
+
+        if not got_tpex_m and tpex_ids:
+            try:
+                url = f"https://www.tpex.org.tw/www/zh-tw/margin/balance?date={slash_d}&response=json"
+                data = http_get_json(url, timeout=14)
+                tables = data.get("tables") or []
+                rows = (tables[0].get("data") or []) if tables else []
+                if rows:
+                    got_tpex_m = True
+                    for row in rows:
+                        if len(row) < 17:
+                            continue
+                        code = str(row[0]).strip()
+                        if code not in tpex_ids:
+                            continue
+                        m_prev = int(round(parse_float(row[2]) or 0.0))
+                        m_bal = int(round(parse_float(row[6]) or 0.0))
+                        m_util = parse_float(row[8])
+                        s_prev = int(round(parse_float(row[10]) or 0.0))
+                        s_bal = int(round(parse_float(row[14]) or 0.0))
+                        s_ratio = round((s_bal / m_bal) * 100.0, 2) if m_bal > 0 else 0.0
+                        margin_map[code] = {
+                            "date": iso_d,
+                            "margin_bal": m_bal,
+                            "margin_chg": m_bal - m_prev,
+                            "short_bal": s_bal,
+                            "short_chg": s_bal - s_prev,
+                            "short_ratio": s_ratio,
+                            "margin_util": m_util,
+                        }
+            except Exception:
+                pass
+
+        if not got_qfii and twse_ids:
+            try:
+                url = f"https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS?date={yyyymmdd}&selectType=ALLBUT0999&response=json"
+                data = http_get_json(url, timeout=14)
+                rows = data.get("data") or []
+                if rows:
+                    got_qfii = True
+                    for row in rows:
+                        if len(row) < 8:
+                            continue
+                        code = str(row[0]).strip()
+                        if code not in twse_ids:
+                            continue
+                        fpct = parse_float(row[7])
+                        if fpct is not None:
+                            qfii_map[code] = round(fpct, 2)
+            except Exception:
+                pass
+
+        if got_twse_m and got_tpex_m and got_qfii:
+            break
+        time.sleep(0.08)
+
+    print(f"[OK] 融資融券載入 {len(margin_map)} 檔 | 上市外資持股 {len(qfii_map)} 檔")
+    return margin_map, qfii_map
+
+
+def _calc_streak(values: List[float]) -> int:
+    if not values:
+        return 0
+    last = values[-1]
+    if last == 0:
+        return 0
+    sign = 1 if last > 0 else -1
+    cnt = 0
+    for v in reversed(values):
+        if (sign > 0 and v > 0) or (sign < 0 and v < 0):
+            cnt += 1
+        else:
+            break
+    return cnt * sign
+
+
+def build_stock_chips(
+    stock_id: str,
+    market: str,
+    history: List[Dict[str, Any]],
+    insti_days: List[Dict[str, Any]],
+    tdcc_cur: Optional[Dict[str, Any]],
+    prev_chips: Dict[str, Any],
+    margin_info: Optional[Dict[str, Any]],
+    qfii_pct: Optional[float],
+    ysum: Dict[str, Any],
+) -> Dict[str, Any]:
+    """彙整法人買賣超、融資融券、TDCC 主力千張大戶與量價籌碼吸籌強度"""
+    w5 = insti_days[-5:] if insti_days else []
+    w10 = insti_days[-10:] if insti_days else []
+    insti_1d = insti_days[-1] if insti_days else None
+    insti_5d = (
+        {
+            "foreign": round(sum(r["foreign"] for r in w5), 1),
+            "trust": round(sum(r["trust"] for r in w5), 1),
+            "dealer": round(sum(r["dealer"] for r in w5), 1),
+            "total": round(sum(r["total"] for r in w5), 1),
+        }
+        if w5
+        else None
+    )
+    insti_10d = (
+        {
+            "foreign": round(sum(r["foreign"] for r in w10), 1),
+            "trust": round(sum(r["trust"] for r in w10), 1),
+            "dealer": round(sum(r["dealer"] for r in w10), 1),
+            "total": round(sum(r["total"] for r in w10), 1),
+        }
+        if w10
+        else None
+    )
+
+    insti_streak = _calc_streak([r["total"] for r in insti_days])
+    foreign_streak = _calc_streak([r["foreign"] for r in insti_days])
+
+    tdcc_out = None
+    if tdcc_cur:
+        tdcc_out = dict(tdcc_cur)
+        prev_td = prev_chips.get("tdcc") or {}
+        if prev_td.get("date") and prev_td.get("date") != tdcc_cur.get("date"):
+            if prev_td.get("big1000_pct") is not None:
+                tdcc_out["delta_big1000_pct"] = round(tdcc_cur["big1000_pct"] - prev_td["big1000_pct"], 2)
+            if prev_td.get("total_holders"):
+                tdcc_out["delta_holders"] = int(tdcc_cur["total_holders"] - prev_td["total_holders"])
+        else:
+            tdcc_out["delta_big1000_pct"] = prev_td.get("delta_big1000_pct")
+            tdcc_out["delta_holders"] = prev_td.get("delta_holders")
+
+    recent20 = history[-20:] if len(history) >= 2 else history
+    up_vol = 0.0
+    tot_vol = 0.0
+    for idx in range(len(recent20)):
+        v = float(recent20[idx].get("v") or 0.0)
+        tot_vol += v
+        prev_c = float(history[len(history) - len(recent20) + idx - 1]["c"]) if (len(history) - len(recent20) + idx - 1) >= 0 else float(recent20[idx]["o"])
+        if float(recent20[idx]["c"]) >= prev_c:
+            up_vol += v
+    up_vol_ratio = round((up_vol / tot_vol) * 100.0, 1) if tot_vol > 0 else None
+
+    inst_hold_pct = qfii_pct if qfii_pct is not None else ysum.get("inst_pct")
+    insiders_pct = ysum.get("insiders_pct")
+
+    tags: List[str] = []
+    if insti_5d and insti_5d["total"] > 0:
+        tags.append("法人5日偏多" if insti_streak < 2 else f"法人連{insti_streak}買")
+    elif insti_5d and insti_5d["total"] < 0:
+        tags.append("法人5日調節" if insti_streak > -2 else f"法人連{abs(insti_streak)}賣")
+    if tdcc_out and tdcc_out.get("big1000_pct", 0) >= 45:
+        tags.append(f"千張大戶{tdcc_out['big1000_pct']:.1f}%高集中")
+    if margin_info and margin_info.get("margin_chg", 0) < 0 and insti_5d and insti_5d["total"] > 0:
+        tags.append("資減法人買")
+    if up_vol_ratio is not None and up_vol_ratio >= 58:
+        tags.append("量價強勢吸籌")
+    if not tags and market != "TW":
+        tags.append("機構持股觀察" if inst_hold_pct is not None else "指數基準")
+    elif not tags:
+        tags.append("籌碼中性整理")
+
+    return {
+        "insti_days": insti_days,
+        "insti_1d": insti_1d,
+        "insti_5d": insti_5d,
+        "insti_10d": insti_10d,
+        "insti_streak": insti_streak,
+        "foreign_streak": foreign_streak,
+        "inst_hold_pct": inst_hold_pct,
+        "insiders_pct": insiders_pct,
+        "tdcc": tdcc_out,
+        "margin": margin_info,
+        "up_vol_ratio_20d": up_vol_ratio,
+        "chips_tags": tags,
+    }
+
+
 def compute_sma(values: List[float], period: int) -> List[Optional[float]]:
     out: List[Optional[float]] = []
     running = 0.0
@@ -780,8 +1187,15 @@ def main() -> int:
         config = json.load(f)
 
     existing_fin_cache = load_existing_financials_cache()
+    existing_chips_cache = load_existing_chips_cache()
     twse_vals = fetch_twse_valuations()
     tpex_vals = fetch_tpex_valuations()
+    twse_ids = {s["id"] for s in config["stocks"] if s.get("market") == "TW" and s.get("exchange") == "TWSE"}
+    tpex_ids = {s["id"] for s in config["stocks"] if s.get("market") == "TW" and s.get("exchange") == "TPEx"}
+    all_tw_ids = {s["id"] for s in config["stocks"] if s.get("market") == "TW"}
+    tdcc_map = fetch_tdcc_shareholders(all_tw_ids)
+    insti_hist_map = fetch_tw_insti_history(twse_ids, tpex_ids, existing_chips_cache)
+    margin_map, qfii_map = fetch_tw_margin_and_qfii(twse_ids, tpex_ids)
     opener, crumb = create_yahoo_session()
 
     yahoo_symbols = [s["yahoo_symbol"] for s in config["stocks"]]
@@ -834,6 +1248,17 @@ def main() -> int:
             ysym, opener, existing_fin_cache.get(stock_id, {})
         )
         news_items = fetch_stock_news(item)
+        chips_obj = build_stock_chips(
+            stock_id=stock_id,
+            market=market,
+            history=history,
+            insti_days=insti_hist_map.get(stock_id) or [],
+            tdcc_cur=tdcc_map.get(stock_id),
+            prev_chips=existing_chips_cache.get(stock_id) or {},
+            margin_info=margin_map.get(stock_id),
+            qfii_pct=qfii_map.get(stock_id),
+            ysum=ysum,
+        )
 
         fin_currency = ysum.get("financial_currency") or yq.get("financial_currency") or item["currency"]
 
@@ -917,6 +1342,7 @@ def main() -> int:
                 },
                 "revenue_mix": item.get("revenue_mix"),
                 "news": news_items,
+                "chips": chips_obj,
                 "signals": signals,
                 "history": history,
             }

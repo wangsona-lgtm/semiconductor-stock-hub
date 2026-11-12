@@ -1131,6 +1131,119 @@ window.SemiCharts = (function () {
     canvas.onmouseleave = () => draw(null);
   }
 
+  function renderInstiChart(canvas, hudEl, stock) {
+    if (!canvas) return;
+    const days = (stock && stock.chips && stock.chips.insti_days) ? stock.chips.insti_days : [];
+    const { ctx, width, height } = setupHiDPI(canvas, 185);
+    ctx.clearRect(0, 0, width, height);
+
+    if (!days.length) {
+      if (hudEl) {
+        hudEl.innerHTML = `<span style="color:#64748b">此標的無證交所/櫃買每日三大法人日報（如美日韓股或費半指數），上方顯示機構持股與 20 日量價吸籌</span>`;
+      }
+      ctx.fillStyle = "#475569";
+      ctx.font = "12px 'Noto Sans TC', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("近 10 日三大法人買賣超柱狀圖（適用台灣上市／上櫃個股）", width / 2, height / 2);
+      canvas.onmousemove = null;
+      canvas.onmouseleave = null;
+      return;
+    }
+
+    const pad = { left: 16, right: 62, top: 34, bottom: 26 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+
+    const vals = [];
+    days.forEach((d) => {
+      vals.push(d.foreign || 0, d.trust || 0, d.total || 0);
+    });
+    vals.push(0);
+    let minV = Math.min(...vals);
+    let maxV = Math.max(...vals);
+    if (minV === maxV) {
+      minV -= 10;
+      maxV += 10;
+    } else {
+      const m = (maxV - minV) * 0.14;
+      minV -= m;
+      maxV += m;
+    }
+    const yFor = (v) => pad.top + ((maxV - v) / (maxV - minV)) * plotH;
+    const zeroY = yFor(0);
+    const n = days.length;
+    const slotW = plotW / n;
+
+    const fmtLots = (v) => {
+      if (v === null || v === undefined) return "—";
+      const s = v > 0 ? "+" : "";
+      return `${s}${Number(v).toLocaleString("en-US", { maximumFractionDigits: 1 })}張`;
+    };
+
+    const updateHud = (idx) => {
+      if (!hudEl) return;
+      const d = days[idx !== null ? idx : n - 1];
+      hudEl.innerHTML = [
+        `<span class="mono" style="color:#e2e8f0;font-weight:700">${d.d}</span>`,
+        `<span style="color:${d.foreign >= 0 ? "#ff4d5a" : "#00d084"}">外資 <strong class="mono">${fmtLots(d.foreign)}</strong></span>`,
+        `<span style="color:${d.trust >= 0 ? "#fbbf24" : "#38bdf8"}">投信 <strong class="mono">${fmtLots(d.trust)}</strong></span>`,
+        `<span style="color:${d.dealer >= 0 ? "#c4b5fd" : "#94a3b8"}">自營 <strong class="mono">${fmtLots(d.dealer)}</strong></span>`,
+        `<span style="color:${d.total >= 0 ? "#ff4d5a" : "#00d084"}">三大法人合計 <strong class="mono">${fmtLots(d.total)}</strong></span>`,
+      ].join("");
+    };
+
+    const draw = (hoverIdx = null) => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = "10.5px 'JetBrains Mono', Consolas, monospace";
+
+      for (const t of niceTicks(minV, maxV, 4)) {
+        if (t < minV || t > maxV) continue;
+        const y = yFor(t);
+        ctx.strokeStyle = Math.abs(t) < 0.01 ? "rgba(148,163,184,0.45)" : COLORS.grid;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+        ctx.fillStyle = COLORS.axisText;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(Math.round(t) + "張", pad.left + plotW + 6, y);
+      }
+
+      const barW = Math.min(18, Math.max(5, slotW * 0.25));
+      days.forEach((d, i) => {
+        const cx = pad.left + (i + 0.5) * slotW;
+        if (hoverIdx === i) {
+          ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
+          ctx.fillRect(pad.left + i * slotW + 2, pad.top, slotW - 4, plotH);
+        }
+
+        const drawBar = (val, xOff, color) => {
+          const yVal = yFor(val);
+          ctx.fillStyle = color;
+          ctx.fillRect(cx + xOff, Math.min(zeroY, yVal), barW, Math.max(2, Math.abs(yVal - zeroY)));
+        };
+        drawBar(d.foreign || 0, -barW * 1.1, (d.foreign || 0) >= 0 ? "rgba(255,77,90,0.68)" : "rgba(0,208,132,0.68)");
+        drawBar(d.total || 0, 0.1 * barW, (d.total || 0) >= 0 ? "rgba(251,191,36,0.92)" : "rgba(56,189,248,0.85)");
+
+        ctx.fillStyle = hoverIdx === i ? "#ffffff" : "#94a3b8";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(d.d.slice(5), cx, pad.top + plotH + 6);
+      });
+
+      updateHud(hoverIdx);
+    };
+
+    draw(null);
+    canvas.onmousemove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const idx = Math.floor(((e.clientX - rect.left - pad.left) / plotW) * n);
+      draw(idx >= 0 && idx < n ? idx : null);
+    };
+    canvas.onmouseleave = () => draw(null);
+  }
+
   return {
     renderTerminalChart,
     renderScatterChart,
@@ -1138,5 +1251,6 @@ window.SemiCharts = (function () {
     renderFinRevenueChart,
     renderFinMarginChart,
     renderFinCashflowChart,
+    renderInstiChart,
   };
 })();

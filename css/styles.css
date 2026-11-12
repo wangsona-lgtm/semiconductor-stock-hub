@@ -1316,3 +1316,82 @@ table.data-table {
   .quote-metrics-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .search-box input { width: 155px; }
 }
+
+/* 法人與主力籌碼分析卡片 */
+.chips-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.chip-box {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(56, 189, 248, 0.14);
+}
+
+.chip-box-title {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.chip-box-main {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.chip-box-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.chip-bar-track {
+  display: flex;
+  height: 9px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(30, 41, 59, 0.9);
+  margin: 6px 0 4px;
+}
+
+.chip-bar-whale { background: #fbbf24; }
+.chip-bar-mid { background: #38bdf8; }
+.chip-bar-retail { background: #f472b6; }
+
+.chip-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.71rem;
+  font-weight: 700;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.75);
+  color: var(--text-muted);
+}
+
+.chip-badge.is-bull {
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde047;
+}
+
+.chip-badge.is-bear {
+  background: rgba(0, 208, 132, 0.14);
+  border-color: rgba(0, 208, 132, 0.35);
+  color: #6ee7b7;
+}
+
+@media (max-width: 1100px) {
+  .chips-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 580px) {
+  .chips-kpi-grid { grid-template-columns: 1fr; }
+}

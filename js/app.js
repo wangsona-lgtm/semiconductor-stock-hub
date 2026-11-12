@@ -269,6 +269,8 @@
     const pills = [
       { id: "all", label: "全部" },
       { id: "watchlist", label: "★ 自選" },
+      { id: "insti_buy5", label: "🔥 法人5日買超" },
+      { id: "big_holder", label: "🐋 千張大戶>=45%" },
       ...state.data.segments.map((s) => ({ id: s.id, label: s.label })),
     ];
     el.innerHTML = pills
@@ -304,6 +306,8 @@
     const filtered = state.data.stocks.filter((s) => {
       if (!matchesSearch(s)) return false;
       if (state.sidebarSegment === "watchlist") return state.watchlist.has(s.id);
+      if (state.sidebarSegment === "insti_buy5") return Boolean(s.chips && s.chips.insti_5d && s.chips.insti_5d.total > 0);
+      if (state.sidebarSegment === "big_holder") return Boolean(s.chips && s.chips.tdcc && s.chips.tdcc.big1000_pct >= 45);
       if (state.sidebarSegment !== "all") return s.segment === state.sidebarSegment;
       return true;
     });
@@ -474,9 +478,114 @@
       )
       .join("");
 
-    // 個股營收來源與新聞卡片
+    // 個股法人與主力籌碼、營收來源與新聞卡片
+    renderChipsSection(s);
     renderRevenueMix(s, document.getElementById("revenueMixCard"), document.getElementById("revMixBasis"));
     renderStockNews(s, document.getElementById("stockNewsCard"));
+  }
+
+  function buildChipsSummaryHtml(stock) {
+    const ch = stock.chips || {};
+    const fmtLots = (v) => {
+      if (v === null || v === undefined || Number.isNaN(v)) return "—";
+      const s = v > 0 ? "+" : "";
+      return `${s}${Number(v).toLocaleString("en-US", { maximumFractionDigits: 1 })} 張`;
+    };
+
+    const i1 = ch.insti_1d;
+    const i5 = ch.insti_5d;
+    const streak = ch.insti_streak || 0;
+    const streakTxt = streak > 1 ? `連買 ${streak} 日` : streak < -1 ? `連賣 ${Math.abs(streak)} 日` : "近期震盪";
+    const instiMain = i5 ? fmtLots(i5.total) : "非台股/無日報";
+    const instiCls = i5 ? chgClass(i5.total) : "flat";
+    const instiSub = i5
+      ? `最近一日 ${i1 ? `${i1.d.slice(5)} ${fmtLots(i1.total)}` : "—"}<br>5日拆分：外 <span class="${chgClass(i5.foreign)}">${fmtLots(i5.foreign)}</span> · 投 <span class="${chgClass(i5.trust)}">${fmtLots(i5.trust)}</span>`
+      : "美日韓標的請見右側機構／內部人持股與20日量價吸籌";
+
+    const td = ch.tdcc;
+    const whalePct = td && td.big1000_pct !== undefined ? td.big1000_pct : null;
+    const mid400Pct = td && td.big400_pct !== undefined ? Math.max(0, +(td.big400_pct - td.big1000_pct).toFixed(2)) : 0;
+    const retailPct = td && td.retail_pct !== undefined ? td.retail_pct : null;
+    const otherPct = whalePct !== null && retailPct !== null ? Math.max(0, +(100 - whalePct - mid400Pct - retailPct).toFixed(2)) : 0;
+
+    const tdccHtml = td
+      ? `
+        <div class="chip-box-main mono" style="color:#fde047">${whalePct.toFixed(2)}% <span style="font-size:0.74rem;color:var(--text-dim)">(千張大戶 ${td.big1000_holders} 人)</span></div>
+        <div class="chip-bar-track" title="黃:千張大戶 / 藍:400~1000張 / 粉:5張以下散戶">
+          <div class="chip-bar-whale" style="width:${whalePct}%"></div>
+          <div class="chip-bar-mid" style="width:${mid400Pct}%"></div>
+          <div style="width:${otherPct}%;background:rgba(148,163,184,0.22)"></div>
+          <div class="chip-bar-retail" style="width:${retailPct}%"></div>
+        </div>
+        <div class="chip-box-sub">&gt;=400張大戶 <strong class="mono">${td.big400_pct.toFixed(1)}%</strong> · 散戶(&lt;=5張) <strong class="mono">${retailPct.toFixed(1)}%</strong> · 總股東 <strong class="mono">${td.total_holders.toLocaleString()}</strong> 人 (${td.date})</div>
+      `
+      : `<div class="chip-box-main mono" style="color:var(--text-muted)">${ch.inst_hold_pct !== null && ch.inst_hold_pct !== undefined ? ch.inst_hold_pct.toFixed(1) + "%" : "—"}</div>
+         <div class="chip-box-sub">機構持股比：${ch.inst_hold_pct !== null && ch.inst_hold_pct !== undefined ? ch.inst_hold_pct.toFixed(1) + "%" : "—"} ｜ 內部人持股：${ch.insiders_pct !== null && ch.insiders_pct !== undefined ? ch.insiders_pct.toFixed(1) + "%" : "—"}</div>`;
+
+    const mg = ch.margin;
+    const marginHtml = mg
+      ? `
+        <div class="chip-box-main mono">${mg.margin_bal.toLocaleString()} <span style="font-size:0.75rem" class="${chgClass(mg.margin_chg)}">(${mg.margin_chg > 0 ? "+" : ""}${mg.margin_chg} 張)</span></div>
+        <div class="chip-box-sub">融券餘額 <strong class="mono">${mg.short_bal.toLocaleString()}</strong> 張 (${mg.short_chg > 0 ? "+" : ""}${mg.short_chg}) · 券資比 <strong class="mono">${mg.short_ratio.toFixed(2)}%</strong> (${mg.date})</div>
+      `
+      : `<div class="chip-box-main mono" style="color:var(--text-dim)">—</div>
+         <div class="chip-box-sub">非台股信用交易標的或暫無融資融券餘額</div>`;
+
+    const instHoldDisplay = ch.inst_hold_pct !== null && ch.inst_hold_pct !== undefined ? `${ch.inst_hold_pct.toFixed(2)}%` : "—";
+    const upVolDisplay = ch.up_vol_ratio_20d !== null && ch.up_vol_ratio_20d !== undefined ? `${ch.up_vol_ratio_20d.toFixed(1)}%` : "—";
+
+    return `
+      <div class="chips-kpi-grid">
+        <div class="chip-box">
+          <div class="chip-box-title"><span>三大法人近5日累計</span><span class="mono" style="color:var(--cyan)">${streakTxt}</span></div>
+          <div class="chip-box-main mono ${instiCls}">${instiMain}</div>
+          <div class="chip-box-sub">${instiSub}</div>
+        </div>
+        <div class="chip-box">
+          <div class="chip-box-title"><span>集保主力千張大戶比</span><span class="mono">TDCC 週報</span></div>
+          ${tdccHtml}
+        </div>
+        <div class="chip-box">
+          <div class="chip-box-title"><span>融資餘額與增減</span><span class="mono">信用籌碼</span></div>
+          ${marginHtml}
+        </div>
+        <div class="chip-box">
+          <div class="chip-box-title"><span>外資/機構持股 · 買盤動能</span><span class="mono">20日量價</span></div>
+          <div class="chip-box-main mono" style="color:var(--cyan)">${instHoldDisplay} <span style="font-size:0.74rem;color:var(--text-dim)">外資/機構</span></div>
+          <div class="chip-box-sub">近20日上漲日量能佔比：<strong class="mono ${ch.up_vol_ratio_20d >= 55 ? "up" : ""}">${upVolDisplay}</strong>${ch.insiders_pct !== null && ch.insiders_pct !== undefined ? ` ｜ 內部人 ${ch.insiders_pct.toFixed(1)}%` : ""}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderChipsSection(stock) {
+    const summaryEl = document.getElementById("chipsSummaryCard");
+    const badgeEl = document.getElementById("chipsBadgeArea");
+    const ch = stock.chips || {};
+
+    if (badgeEl) {
+      const tags = ch.chips_tags || [];
+      badgeEl.innerHTML = tags
+        .map((t) => {
+          const isBull = t.includes("買") || t.includes("高集中") || t.includes("吸籌");
+          const isBear = t.includes("賣") || t.includes("調節");
+          const cls = isBull ? "is-bull" : isBear ? "is-bear" : "";
+          return `<span class="chip-badge ${cls}">${escHtml(t)}</span>`;
+        })
+        .join(" ");
+    }
+
+    if (summaryEl) {
+      summaryEl.innerHTML = buildChipsSummaryHtml(stock);
+    }
+
+    if (window.SemiCharts && window.SemiCharts.renderInstiChart) {
+      window.SemiCharts.renderInstiChart(
+        document.getElementById("instiCanvas"),
+        document.getElementById("instiHud"),
+        stock
+      );
+    }
   }
 
   function escHtml(str) {
@@ -618,7 +727,12 @@
 
     // 3. 基本面矩陣篩選列與表格
     const filterEl = document.getElementById("tableSegmentFilters");
-    const pills = [{ id: "all", label: "全部標的" }, ...state.data.segments.map((s) => ({ id: s.id, label: s.label }))];
+    const pills = [
+      { id: "all", label: "全部標的" },
+      { id: "insti_buy5", label: "🔥 法人5日買超" },
+      { id: "big_holder", label: "🐋 千張大戶>=45%" },
+      ...state.data.segments.map((s) => ({ id: s.id, label: s.label })),
+    ];
     filterEl.innerHTML = pills
       .map(
         (p) =>
@@ -641,6 +755,8 @@
 
     const rows = state.data.stocks.filter((s) => {
       if (!matchesSearch(s)) return false;
+      if (state.tableSegment === "insti_buy5") return Boolean(s.chips && s.chips.insti_5d && s.chips.insti_5d.total > 0);
+      if (state.tableSegment === "big_holder") return Boolean(s.chips && s.chips.tdcc && s.chips.tdcc.big1000_pct >= 45);
       if (state.tableSegment !== "all" && s.segment !== state.tableSegment) return false;
       return true;
     });
@@ -653,6 +769,8 @@
         case "ret_5d": return s.metrics.ret_5d;
         case "ret_20d": return s.metrics.ret_20d;
         case "ret_60d": return s.metrics.ret_60d;
+        case "insti_5d": return s.chips?.insti_5d?.total ?? null;
+        case "big1000_pct": return s.chips?.tdcc?.big1000_pct ?? null;
         case "pe": return s.fundamentals.pe;
         case "pb": return s.fundamentals.pb;
         case "yield": return s.fundamentals.dividend_yield;
@@ -673,8 +791,12 @@
     });
 
     tbody.innerHTML = rows
-      .map(
-        (s) => `
+      .map((s) => {
+        const i5v = s.chips?.insti_5d?.total;
+        const i5Txt = i5v !== null && i5v !== undefined ? `${i5v > 0 ? "+" : ""}${i5v.toLocaleString("en-US", { maximumFractionDigits: 1 })}` : "—";
+        const b1000 = s.chips?.tdcc?.big1000_pct;
+        const b1000Txt = b1000 !== null && b1000 !== undefined ? `${b1000.toFixed(1)}%` : "—";
+        return `
         <tr data-id="${s.id}">
           <td>
             <div style="font-weight:700">${s.name}</div>
@@ -686,14 +808,16 @@
           <td class="mono ${chgClass(s.metrics.ret_5d)}">${fmtPct(s.metrics.ret_5d)}</td>
           <td class="mono ${chgClass(s.metrics.ret_20d)}">${fmtPct(s.metrics.ret_20d)}</td>
           <td class="mono ${chgClass(s.metrics.ret_60d)}">${fmtPct(s.metrics.ret_60d)}</td>
+          <td class="mono ${chgClass(i5v)}" style="font-weight:700">${i5Txt}</td>
+          <td class="mono" style="color:${b1000 >= 45 ? "#fde047" : "var(--text-main)"}">${b1000Txt}</td>
           <td class="mono">${s.fundamentals.pe ? s.fundamentals.pe.toFixed(2) + "x" : "—"}</td>
           <td class="mono">${s.fundamentals.pb ? s.fundamentals.pb.toFixed(2) + "x" : "—"}</td>
           <td class="mono">${s.fundamentals.dividend_yield !== null && s.fundamentals.dividend_yield !== undefined ? s.fundamentals.dividend_yield.toFixed(2) + "%" : "—"}</td>
           <td class="mono">${s.metrics.rsi14 !== null ? s.metrics.rsi14.toFixed(1) : "—"}</td>
           <td class="mono ${chgClass(s.metrics.bias_ma60)}">${fmtPct(s.metrics.bias_ma60)}</td>
         </tr>
-      `
-      )
+      `;
+      })
       .join("");
 
     tbody.querySelectorAll("tr").forEach((tr) => {
@@ -797,6 +921,22 @@
     const finMixBox = document.getElementById("finRevenueMixBox");
     if (finMixBox) {
       renderRevenueMix(active, finMixBox, null);
+    }
+
+    const finChipsBox = document.getElementById("finChipsBox");
+    if (finChipsBox) {
+      const cTags = (active.chips?.chips_tags || []).map((t) => {
+        const isBull = t.includes("買") || t.includes("高集中") || t.includes("吸籌");
+        const isBear = t.includes("賣") || t.includes("調節");
+        return `<span class="chip-badge ${isBull ? "is-bull" : isBear ? "is-bear" : ""}">${escHtml(t)}</span>`;
+      }).join(" ");
+      finChipsBox.innerHTML = `
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="font-size:0.82rem;font-weight:700;color:var(--cyan)">🏛️ ${escHtml(active.name)} (${active.id}) 法人進出與主力籌碼快照</div>
+          <div>${cTags}</div>
+        </div>
+        ${buildChipsSummaryHtml(active)}
+      `;
     }
 
     window.SemiCharts.renderFinRevenueChart(
@@ -1081,7 +1221,8 @@
       "代號", "名稱", "英文名", "市場", "交易所", "供應鏈定位", "幣別",
       "最新日期", "收盤價", "漲跌", "單日漲跌幅(%)", "5日報酬(%)", "20日報酬(%)", "60日報酬(%)", "2025至今(%)",
       "本益比(PE)", "預估本益比(Fwd PE)", "EV/EBITDA", "P/S", "股價淨值比(PB)", "殖利率(%)",
-      "毛利率(%)", "營益率(%)", "營收年增(%)", "MA20", "MA60", "MA200", "RSI(14)", "相對SOX 3M(pp)", "下次財報日"
+      "毛利率(%)", "營益率(%)", "營收年增(%)", "MA20", "MA60", "MA200", "RSI(14)", "相對SOX 3M(pp)",
+      "三大法人1日(張)", "三大法人5日(張)", "外資或機構持股(%)", "千張大戶(%)", "400張大戶(%)", "融資餘額(張)", "融券餘額(張)", "下次財報日"
     ];
     const esc = (v) => {
       if (v === null || v === undefined) return "";
@@ -1094,7 +1235,11 @@
       s.metrics.ret_5d, s.metrics.ret_20d, s.metrics.ret_60d, s.metrics.ret_from_2025,
       s.fundamentals.pe, s.fundamentals.forward_pe, s.fundamentals.ev_ebitda, s.fundamentals.ps, s.fundamentals.pb, s.fundamentals.dividend_yield,
       s.fundamentals.gross_margin, s.fundamentals.operating_margin, s.fundamentals.revenue_growth,
-      s.metrics.ma20, s.metrics.ma60, s.metrics.ma200, s.metrics.rsi14, s.metrics.vs_sox_3m, s.fundamentals.earnings_date
+      s.metrics.ma20, s.metrics.ma60, s.metrics.ma200, s.metrics.rsi14, s.metrics.vs_sox_3m,
+      s.chips?.insti_1d?.total, s.chips?.insti_5d?.total, s.chips?.inst_hold_pct,
+      s.chips?.tdcc?.big1000_pct, s.chips?.tdcc?.big400_pct,
+      s.chips?.margin?.margin_bal, s.chips?.margin?.short_bal,
+      s.fundamentals.earnings_date
     ].map(esc).join(","));
 
     const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
