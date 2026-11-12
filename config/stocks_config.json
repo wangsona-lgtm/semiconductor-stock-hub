@@ -242,6 +242,18 @@
       "segment": "us_semi",
       "tagline": "HBM3E 高頻寬記憶體、DRAM 與 NAND 景氣指標廠",
       "featured": false
+    },
+    {
+      "id": "INTC",
+      "yahoo_symbol": "INTC",
+      "name": "Intel 英特爾",
+      "en_name": "Intel Corp",
+      "market": "US",
+      "exchange": "NASDAQ",
+      "currency": "USD",
+      "segment": "us_semi",
+      "tagline": "x86 處理器大廠與 IDM 2.0 晶圓代工（Intel Foundry）轉型指標",
+      "featured": true
     }
   ]
 }

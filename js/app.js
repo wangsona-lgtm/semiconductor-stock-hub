@@ -176,7 +176,7 @@
   function renderTickerStrip() {
     const el = document.getElementById("tickerStrip");
     if (!el) return;
-    const featuredIds = ["^SOX", "2330", "NVDA", "TSM", "2454", "3661", "3711", "ASML", "AVGO", "6488"];
+    const featuredIds = ["^SOX", "2330", "NVDA", "TSM", "INTC", "2454", "3661", "3711", "ASML", "AVGO", "6488"];
     const items = featuredIds.map((id) => state.stocksById.get(id)).filter(Boolean);
     el.innerHTML = items
       .map((s) => {

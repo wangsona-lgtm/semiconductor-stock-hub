@@ -10,10 +10,11 @@ window.SemiSupplyGraph = (function () {
     "3131": { x: 28,  y: 332, w: 174, h: 66, col: 1, role: "CoWoS 濕製程先進封裝設備" },
     MU:     { x: 28,  y: 462, w: 174, h: 66, col: 1, role: "HBM3E 高頻寬記憶體" },
 
-    // Col 2: 晶圓代工中樞與 ADR 連動 (x = 328)
-    TSM:    { x: 332, y: 72,  w: 176, h: 66, col: 2, role: "台積電美股 ADR 定價指標" },
-    "2330": { x: 322, y: 248, w: 196, h: 86, col: 2, role: "全球先進製程與 CoWoS 核心中樞", hub: true },
-    "2303": { x: 332, y: 462, w: 176, h: 66, col: 2, role: "成熟與特殊製程晶圓代工" },
+    // Col 2: 晶圓代工中樞與 IDM / ADR (x = 322..518)
+    TSM:    { x: 332, y: 56,  w: 176, h: 64, col: 2, role: "台積電美股 ADR 定價指標" },
+    "2330": { x: 322, y: 196, w: 196, h: 84, col: 2, role: "全球先進製程與 CoWoS 核心中樞", hub: true },
+    INTC:   { x: 332, y: 352, w: 176, h: 66, col: 2, role: "x86 處理器與 IDM 晶圓代工" },
+    "2303": { x: 332, y: 486, w: 176, h: 66, col: 2, role: "成熟與特殊製程晶圓代工" },
 
     // Col 3: 美台 IC 設計與 AI 晶片大廠 (x = 646)
     NVDA:   { x: 646, y: 26,  w: 176, h: 64, col: 3, role: "AI GPU 與加速運算龍頭" },
@@ -34,7 +35,9 @@ window.SemiSupplyGraph = (function () {
   const EDGES = [
     // 設備與材料 -> 代工 / 封測
     { from: "ASML", to: "2330", type: "supply", label: "供應 EUV 極紫外光微影設備（3nm/2nm 關鍵）" },
+    { from: "ASML", to: "INTC", type: "supply", label: "供應 High-NA EUV 新世代微影曝光設備（18A/14A 製程）" },
     { from: "6488", to: "2330", type: "supply", label: "供應 12 吋拋光與磊晶矽晶圓" },
+    { from: "6488", to: "INTC", type: "supply", label: "供應 12 吋晶圓製造用半導體矽晶圓" },
     { from: "6488", to: "2303", type: "supply", label: "供應成熟與特殊製程矽晶圓" },
     { from: "3131", to: "2330", type: "supply", label: "供應 CoWoS 先進封裝濕製程清洗設備" },
     { from: "3131", to: "3711", type: "supply", label: "供應高階封測濕製程設備", arcY: 608 },
@@ -62,7 +65,9 @@ window.SemiSupplyGraph = (function () {
     { from: "2454", to: "2449", type: "mfg", label: "手機與 AI 晶片測試夥伴" },
     { from: "2379", to: "3711", type: "mfg", label: "網通 IC 封裝測試合作" },
 
-    // 台美市場與指數連動
+    // 台美市場與指數連動 / 競爭關係
+    { from: "INTC", to: "2330", type: "mfg",  label: "部分高階運算 Tile 委由台積電代工，並與台積電於晶圓代工市場競爭" },
+    { from: "INTC", to: "AMD",  type: "sync", label: "x86 伺服器與桌機處理器直接競爭，市占消長連動股價" },
     { from: "2330", to: "TSM",  type: "sync", label: "台股現貨與美國 ADR (1 ADR = 5 股) 溢折價即時連動" },
     { from: "TSM",  to: "^SOX", type: "sync", label: "台積電 ADR 為費城半導體指數關鍵權值成分", arcY: 36 },
     { from: "NVDA", to: "^SOX", type: "sync", label: "AI GPU 龍頭帶動費半指數多空走勢" },
@@ -80,11 +85,11 @@ window.SemiSupplyGraph = (function () {
     },
     equip: {
       label: "設備與矽晶圓鏈",
-      ids: new Set(["ASML", "6488", "3131", "2330", "2303", "3711"]),
+      ids: new Set(["ASML", "6488", "3131", "2330", "INTC", "2303", "3711"]),
     },
     sync: {
       label: "台美股價與費半連動",
-      ids: new Set(["^SOX", "TSM", "2330", "NVDA", "AMD", "AVGO", "ASML", "MU"]),
+      ids: new Set(["^SOX", "TSM", "2330", "NVDA", "AMD", "INTC", "AVGO", "ASML", "MU"]),
     },
   };
 
