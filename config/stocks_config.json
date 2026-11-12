@@ -62,7 +62,19 @@
       "currency": "TWD",
       "segment": "foundry",
       "tagline": "全球先進製程與 CoWoS 晶圓代工絕對龍頭",
-      "featured": true
+      "featured": true,
+      "news_query": "\"台積電\" (股價 OR 財報 OR CoWoS OR 法說) when:14d",
+      "revenue_mix": {
+        "basis": "2026 Q3 法說會官方口徑",
+        "note": "先進製程佔晶圓銷售比重：2nm 8%、3nm 33%、5nm 28%、7nm 10%",
+        "items": [
+          { "name": "高效能運算 (HPC / AI)", "pct": 68, "desc": "AI GPU、資料中心處理器與客製化 ASIC 主力動能" },
+          { "name": "智慧型手機 (Smartphone)", "pct": 21, "desc": "旗艦手機 3nm / 2nm SoC 晶圓代工" },
+          { "name": "物聯網 (IoT)", "pct": 4, "desc": "連網裝置與邊緣運算晶片" },
+          { "name": "車用電子 (Automotive)", "pct": 4, "desc": "車載資訊娛樂與 ADAS 晶片" },
+          { "name": "消費性電子及其他", "pct": 3, "desc": "數位消費性電子 (1%) 與其他 (2%)" }
+        ]
+      }
     },
     {
       "id": "2303",
@@ -74,7 +86,18 @@
       "currency": "TWD",
       "segment": "foundry",
       "tagline": "成熟與特殊製程代工主力，具備穩健現金殖利率",
-      "featured": false
+      "featured": false,
+      "news_query": "\"聯電\" (2303 OR 財報 OR 股價 OR 12奈米) when:21d",
+      "revenue_mix": {
+        "basis": "2026 Q3 法說會製程別口徑",
+        "note": "22nm 單一製程佔比創高至 18.3%；與 Intel 合作之 12nm 預計年底完成認證",
+        "items": [
+          { "name": "22nm / 28nm 製程", "pct": 35, "desc": "OLED DDI、ISP 與高速連網晶片（22nm 佔 18.3%）" },
+          { "name": "65nm 製程", "pct": 19, "desc": "電源管理與工業應用特殊製程" },
+          { "name": "40nm 製程", "pct": 16, "desc": "Wi-Fi、網通與微控制器晶片" },
+          { "name": "其他成熟製程 (>65nm)", "pct": 30, "desc": "車用、功率元件與 8 吋特殊製程" }
+        ]
+      }
     },
     {
       "id": "2454",
@@ -86,7 +109,17 @@
       "currency": "TWD",
       "segment": "ic_design",
       "tagline": "旗艦手機 SoC、邊緣 AI 與客製化晶片設計大廠",
-      "featured": true
+      "featured": true,
+      "news_query": "\"聯發科\" (2454 OR 天璣 OR AI OR 財報) when:14d",
+      "revenue_mix": {
+        "basis": "2026 產品線結構區間參考",
+        "note": "Smart Edge 涵蓋 AI PC、Wi-Fi 7、車用座艙及雲端 ASIC 新動能",
+        "items": [
+          { "name": "智慧裝置平台 (Smart Edge)", "pct": 55, "desc": "約 53~58%，含 AI PC/平板、Wi-Fi 7、電視與車用/ASIC" },
+          { "name": "手機晶片 (Mobile Phone)", "pct": 40, "desc": "約 37~42%，天璣旗艦與主流 5G SoC" },
+          { "name": "電源管理 IC (Power IC)", "pct": 5, "desc": "約 5~6%，手機、PC 與資料中心電源管理晶片" }
+        ]
+      }
     },
     {
       "id": "3661",
@@ -98,7 +131,16 @@
       "currency": "TWD",
       "segment": "ic_design",
       "tagline": "雲端巨頭 AI ASIC 客製化晶片高成長設計服務廠",
-      "featured": true
+      "featured": true,
+      "news_query": "\"世芯\" (3661 OR ASIC OR AWS OR AI) when:21d",
+      "revenue_mix": {
+        "basis": "2025–2026 營運模式結構（無固定單一百分比）",
+        "note": "營收高度集中北美雲端 CSP 之 HPC / AI 加速器晶片",
+        "items": [
+          { "name": "Turnkey 量產晶片出貨", "pct": null, "tag": "營收規模主力", "desc": "3nm AI 加速器進入量產放量，含晶圓與 CoWoS 封裝成本" },
+          { "name": "NRE 委託設計服務", "pct": null, "tag": "高毛利技術門檻", "desc": "前端架構設計與 3nm/2nm 新專案開案費，毛利率較高" }
+        ]
+      }
     },
     {
       "id": "3443",
@@ -110,7 +152,16 @@
       "currency": "TWD",
       "segment": "ic_design",
       "tagline": "台積電轉投資 ASIC 設計服務與 HBM/UCIe IP 指標",
-      "featured": false
+      "featured": false,
+      "news_query": "\"創意\" (3443 OR ASIC OR 台積電 OR HBM) when:21d",
+      "revenue_mix": {
+        "basis": "2025–2026 營運模式結構（無固定單一百分比）",
+        "note": "台積電集團 ASIC 旗艦，聚焦 AI、HPC、高速網通與儲存應用",
+        "items": [
+          { "name": "Turnkey 量產製造服務", "pct": null, "tag": "2026 放量動能", "desc": "CSP 客戶 AI 加速器與 CPU 專案進入量產帶動營收跳升" },
+          { "name": "NRE 設計服務與先進 IP", "pct": null, "tag": "核心護城河", "desc": "結合 HBM / UCIe 與台積電 CoWoS 先進封裝設計能力" }
+        ]
+      }
     },
     {
       "id": "2379",
@@ -122,7 +173,16 @@
       "currency": "TWD",
       "segment": "ic_design",
       "tagline": "高速乙太網路、Wi-Fi 7 網通與音訊控制 IC 大廠",
-      "featured": false
+      "featured": false,
+      "news_query": "\"瑞昱\" (2379 OR 網通 OR Wi-Fi OR 財報) when:21d",
+      "revenue_mix": {
+        "basis": "2026 應用別比重參考",
+        "note": "受惠 Wi-Fi 7、2.5G/10G 乙太網路與車用網通規格升級",
+        "items": [
+          { "name": "網通與非 PC 應用", "pct": 70, "desc": "網通交換器、Wi-Fi 7 路由器、車用乙太網路與多媒體" },
+          { "name": "PC 周邊與 Edge AI", "pct": 30, "desc": "PC 音訊 Codec、讀卡機與 AI PC 週邊控制 IC" }
+        ]
+      }
     },
     {
       "id": "3711",
@@ -134,7 +194,16 @@
       "currency": "TWD",
       "segment": "osat",
       "tagline": "全球第一大封測廠，受惠 CoWoS 與先進封裝外溢商機",
-      "featured": true
+      "featured": true,
+      "news_query": "\"日月光\" (3711 OR 先進封裝 OR CoWoS OR 財報) when:21d",
+      "revenue_mix": {
+        "basis": "2026 事業群比重參考",
+        "note": "LEAP 先進封裝與異質整合營收規模突破 40 億美元",
+        "items": [
+          { "name": "ATM 封裝測試與材料", "pct": 62, "desc": "半導體封測核心本業，貢獻約 90% 合併營業利益" },
+          { "name": "EMS 電子代工服務", "pct": 38, "desc": "系統級組裝與 AI 伺服器周邊代工，營收高但毛利較低" }
+        ]
+      }
     },
     {
       "id": "2449",
@@ -146,7 +215,16 @@
       "currency": "TWD",
       "segment": "osat",
       "tagline": "AI GPU 與高階晶片晶圓/成品測試核心夥伴",
-      "featured": false
+      "featured": false,
+      "news_query": "\"京元電子\" OR \"京元電\" (2449 OR AI OR 測試) when:21d",
+      "revenue_mix": {
+        "basis": "2025–2026 服務別比重參考",
+        "note": "AI / HPC 與先進製程晶片測試需求推升整體稼動率與擴產",
+        "items": [
+          { "name": "晶圓測試與成品測試 (FT/CP)", "pct": 82, "desc": "約 80~85%，AI GPU、ASIC 與手機晶片測試核心業務" },
+          { "name": "後段研磨切割與支援服務", "pct": 18, "desc": "約 15~20%，晶圓研磨、切割與預燒測試輔助服務" }
+        ]
+      }
     },
     {
       "id": "6488",
@@ -158,7 +236,16 @@
       "currency": "TWD",
       "segment": "equipment",
       "tagline": "全球前三大 12 吋半導體矽晶圓與化合物晶圓製造商",
-      "featured": false
+      "featured": false,
+      "news_query": "\"環球晶\" (6488 OR 矽晶圓 OR 財報) when:21d",
+      "revenue_mix": {
+        "basis": "2025–2026 產品與區域結構",
+        "note": "涵蓋亞、美、歐三大洲供應鏈在地化佈局",
+        "items": [
+          { "name": "12 吋 (300mm) 拋光與磊晶矽晶圓", "pct": null, "tag": "營收主軸", "desc": "高階邏輯與 AI 記憶體（HBM/DDR5）先進製程核心材料" },
+          { "name": "8 吋以下及化合物/SOI 晶圓", "pct": null, "tag": "利基與車工應用", "desc": "支援功率半導體、車用電子與工業控制需求" }
+        ]
+      }
     },
     {
       "id": "3131",
@@ -170,7 +257,17 @@
       "currency": "TWD",
       "segment": "equipment",
       "tagline": "先進封裝濕製程與晶圓清洗設備關鍵供應商",
-      "featured": false
+      "featured": false,
+      "news_query": "\"弘塑\" (3131 OR CoWoS OR 設備) when:30d",
+      "revenue_mix": {
+        "basis": "2025–2026 產品線比重參考",
+        "note": "受惠 CoWoS 與先進封裝大擴產，二期新廠持續擴充交機量",
+        "items": [
+          { "name": "自製濕製程設備", "pct": 67, "desc": "約 65~70%，先進封裝去光阻/清洗機台核心主力" },
+          { "name": "電子級化學品 (添鴻)", "pct": 21, "desc": "約 18~25%，蝕刻液與去光阻耗材，於封測廠市佔高" },
+          { "name": "設備代理與維修服務", "pct": 12, "desc": "約 10~16%，代理設備銷售、軟體與售後維運" }
+        ]
+      }
     },
     {
       "id": "^SOX",
@@ -183,7 +280,16 @@
       "segment": "us_semi",
       "tagline": "全球半導體景氣與科技股資金風向總指標",
       "featured": true,
-      "is_index": true
+      "is_index": true,
+      "news_query": "\"費城半導體\" OR \"費半\" (指數 OR 美股) when:14d",
+      "revenue_mix": {
+        "basis": "指數結構說明",
+        "note": "追蹤全球 30 家設計、製造、設備與封測核心半導體企業市值加權表現",
+        "items": [
+          { "name": "IC 設計與 AI 晶片大廠", "pct": null, "tag": "核心權值", "desc": "包含 NVIDIA、Broadcom、AMD、Qualcomm 等" },
+          { "name": "晶圓代工 / IDM / 設備與記憶體", "pct": null, "tag": "製造與基礎設施", "desc": "包含 TSMC ADR、ASML、Intel、Micron、Applied Materials 等" }
+        ]
+      }
     },
     {
       "id": "NVDA",
@@ -195,7 +301,19 @@
       "currency": "USD",
       "segment": "us_semi",
       "tagline": "全球 AI 加速運算 GPU、CUDA 生態與資料中心霸主",
-      "featured": true
+      "featured": true,
+      "news_query": "\"NVIDIA\" OR \"輝達\" (財報 OR GPU OR 黃仁勳 OR 股價) when:14d",
+      "revenue_mix": {
+        "basis": "FY2026 全年財報口徑（總營收 $2,159.4 億）",
+        "note": "資料中心營收高達 $1,937.4 億，全面主導 AI 基礎設施資本支出",
+        "items": [
+          { "name": "資料中心 (Data Center)", "pct": 89.7, "desc": "Blackwell / AI GPU 運算卡與 InfiniBand/Spectrum 網通" },
+          { "name": "遊戲顯卡 (Gaming)", "pct": 7.4, "desc": "GeForce RTX 系列消費級顯示卡 ($160.4 億)" },
+          { "name": "專業視覺化 (ProViz)", "pct": 1.5, "desc": "RTX 工作站繪圖與 Omniverse 模擬" },
+          { "name": "車用與自駕 (Automotive)", "pct": 1.1, "desc": "DRIVE 車載運算平台" },
+          { "name": "OEM 與其他", "pct": 0.3, "desc": "其他 OEM 晶片與授權收入" }
+        ]
+      }
     },
     {
       "id": "TSM",
@@ -207,7 +325,19 @@
       "currency": "USD",
       "segment": "us_semi",
       "tagline": "台積電美國存託憑證，觀察外資即時定價與溢價指標",
-      "featured": true
+      "featured": true,
+      "news_query": "\"TSMC\" OR \"台積電 ADR\" (stock OR earnings OR chip) when:14d",
+      "revenue_mix": {
+        "basis": "2026 Q3 法說會官方口徑（與台積電 2330 一致）",
+        "note": "1 單位 ADR 等於 5 股台積電普通股；2nm 佔比達 8%、3nm 達 33%",
+        "items": [
+          { "name": "高效能運算 (HPC / AI)", "pct": 68, "desc": "AI GPU、資料中心 CPU 與客製化晶片代工" },
+          { "name": "智慧型手機 (Smartphone)", "pct": 21, "desc": "高階手機 3nm / 2nm 旗艦 SoC" },
+          { "name": "物聯網 (IoT)", "pct": 4, "desc": "邊緣感測與連網晶片" },
+          { "name": "車用電子 (Automotive)", "pct": 4, "desc": "車載控制器與先進駕駛輔助系統" },
+          { "name": "消費性電子及其他", "pct": 3, "desc": "數位消費性電子與其他應用" }
+        ]
+      }
     },
     {
       "id": "ASML",
@@ -219,7 +349,16 @@
       "currency": "USD",
       "segment": "us_semi",
       "tagline": "EUV 極紫外光微影曝光機全球唯一獨家設備商",
-      "featured": false
+      "featured": false,
+      "news_query": "\"ASML\" OR \"艾司摩爾\" (EUV OR 財報 OR 微影) when:21d",
+      "revenue_mix": {
+        "basis": "2026 業務結構參考（全年營收目標 €440–450 億）",
+        "note": "EUV（含 High-NA）貢獻新機台銷售絕大部份金額；DUV 支撐成熟與浸潤式需求",
+        "items": [
+          { "name": "微影系統新機台銷售 (EUV + DUV)", "pct": 74, "desc": "Low-NA / High-NA EUV 與浸潤式 DUV 曝光機交付" },
+          { "name": "裝機管理與升級服務 (IBM)", "pct": 26, "desc": "約 25~28%，高毛利機台維護、備品與效能升級方案" }
+        ]
+      }
     },
     {
       "id": "AMD",
@@ -231,7 +370,16 @@
       "currency": "USD",
       "segment": "us_semi",
       "tagline": "資料中心 EPYC 伺服器 CPU 與 Instinct AI 加速器主力",
-      "featured": false
+      "featured": false,
+      "news_query": "\"AMD\" OR \"超微\" (EPYC OR Instinct OR 財報 OR AI) when:14d",
+      "revenue_mix": {
+        "basis": "2026 年中財報結構參考",
+        "note": "資料中心受惠 EPYC 伺服器 CPU 與 Instinct AI 加速器持續放量",
+        "items": [
+          { "name": "資料中心 (Data Center)", "pct": 58, "desc": "EPYC 伺服器處理器與 Instinct AI GPU/系統級機櫃" },
+          { "name": "客戶端 / 遊戲與嵌入式", "pct": 42, "desc": "Ryzen PC 處理器、Radeon 顯示卡與 Xilinx 嵌入式晶片" }
+        ]
+      }
     },
     {
       "id": "AVGO",
@@ -243,7 +391,16 @@
       "currency": "USD",
       "segment": "us_semi",
       "tagline": "客製化 AI ASIC 與超大規模資料中心高速網通晶片龍頭",
-      "featured": false
+      "featured": false,
+      "news_query": "\"Broadcom\" OR \"博通\" (AVGO OR ASIC OR VMware OR AI) when:14d",
+      "revenue_mix": {
+        "basis": "FY2026 兩大事業群結構參考",
+        "note": "AI 客製化加速器 (XPU) 與高速乙太網交換晶片已成半導體成長主引擎",
+        "items": [
+          { "name": "半導體解決方案 (Semiconductor)", "pct": 70, "desc": "客製化 AI ASIC/XPU、資料中心網通晶片與寬頻儲存" },
+          { "name": "基礎設施軟體 (Infrastructure Software)", "pct": 30, "desc": "整合 VMware、企業資安與大型主機高毛利訂閱軟體" }
+        ]
+      }
     },
     {
       "id": "MU",
@@ -255,7 +412,17 @@
       "currency": "USD",
       "segment": "us_semi",
       "tagline": "HBM3E 高頻寬記憶體、DRAM 與 NAND 景氣指標廠",
-      "featured": false
+      "featured": false,
+      "news_query": "\"Micron\" OR \"美光\" (HBM OR DRAM OR NAND OR 財報) when:14d",
+      "revenue_mix": {
+        "basis": "FY2026 產品別營收口徑",
+        "note": "AI 伺服器 HBM 產能滿載且企業級 DDR5 / 高容量 SSD 報價走揚",
+        "items": [
+          { "name": "DRAM 記憶體（含 HBM）", "pct": 73, "desc": "HBM3E/HBM4 高頻寬記憶體、伺服器 DDR5 與 LPDDR5" },
+          { "name": "NAND Flash 快閃記憶體", "pct": 26, "desc": "資料中心高容量企業級 SSD 與消費儲存" },
+          { "name": "其他業務", "pct": 1, "desc": "NOR Flash 等其他記憶體產品" }
+        ]
+      }
     },
     {
       "id": "INTC",
@@ -267,7 +434,17 @@
       "currency": "USD",
       "segment": "us_semi",
       "tagline": "x86 處理器大廠與 IDM 2.0 晶圓代工（Intel Foundry）轉型指標",
-      "featured": true
+      "featured": true,
+      "news_query": "\"Intel\" OR \"英特爾\" (18A OR Foundry OR 財報 OR 股價) when:14d",
+      "revenue_mix": {
+        "basis": "2026 Q3 財報各部門毛口徑（抵銷前合計 $221.2 億，合併淨額 $165.1 億）",
+        "note": "Q3 DCAI 年增 +78%、CCPG -5%、Foundry 營業虧損 -$18.5 億",
+        "items": [
+          { "name": "客戶端運算 (CCPG / PC)", "pct": 36.6, "desc": "$81.0 億；筆電與桌機處理器，受 PC 衰退與記憶體成本影響" },
+          { "name": "資料中心與 AI (DCAI)", "pct": 33.1, "desc": "$73.2 億 (+78% YoY)；雲端擴建帶動通用伺服器 CPU 需求" },
+          { "name": "Intel Foundry 晶圓代工", "pct": 30.3, "desc": "$67.0 億（含內部製造）；尚缺具名 14A/18A-P 外部大客戶" }
+        ]
+      }
     },
     {
       "id": "8035.T",
@@ -279,7 +456,16 @@
       "currency": "JPY",
       "segment": "jp_semi",
       "tagline": "日本第一大半導體設備商，全球塗佈顯影與蝕刻設備霸主",
-      "featured": true
+      "featured": true,
+      "news_query": "\"東京威力科創\" OR \"Tokyo Electron\" (半導體 OR 財報 OR 設備) when:30d",
+      "revenue_mix": {
+        "basis": "FY2026 事業別結構參考",
+        "note": "依銷售型態區分：新機台佔約 74~75%、現場維運與升級服務約 25~26%",
+        "items": [
+          { "name": "半導體製程設備 (SPE)", "pct": 97, "desc": "約 96~98%，塗佈顯影 (全球獨佔級)、蝕刻、熱處理與成膜清洗" },
+          { "name": "平面顯示器設備 (FPD)", "pct": 3, "desc": "約 2~4%，OLED / LCD 面板製程設備" }
+        ]
+      }
     },
     {
       "id": "6857.T",
@@ -291,7 +477,16 @@
       "currency": "JPY",
       "segment": "jp_semi",
       "tagline": "全球 AI GPU、SoC 與 HBM 高階自動化測試機台雙雄",
-      "featured": true
+      "featured": true,
+      "news_query": "\"愛德萬\" OR \"Advantest\" (測試 OR AI OR 財報) when:30d",
+      "revenue_mix": {
+        "basis": "FY2026 事業別結構參考",
+        "note": "受惠 Blackwell 等 AI GPU 複雜度上升與 HBM 高速測試需求倍增",
+        "items": [
+          { "name": "半導體測試系統 (Test Systems)", "pct": 90, "desc": "約 90~91%，包含 SoC/AI GPU 測試機與 HBM/DRAM 記憶體測試機" },
+          { "name": "技術支援與介面服務", "pct": 10, "desc": "約 9~10%，機台維護、校正、測試介面卡與二手設備" }
+        ]
+      }
     },
     {
       "id": "4063.T",
@@ -303,7 +498,17 @@
       "currency": "JPY",
       "segment": "jp_semi",
       "tagline": "全球市占第一 12 吋半導體矽晶圓與 EUV 光阻劑龍頭",
-      "featured": false
+      "featured": false,
+      "news_query": "\"信越化學\" OR \"Shin-Etsu\" (矽晶圓 OR 光阻 OR 半導體) when:30d",
+      "revenue_mix": {
+        "basis": "FY2026 四大事業群結構（電子材料貢獻逾 50% 集團營業利益）",
+        "note": "橫跨半導體材料與美國 PVC 基建材料雙核心",
+        "items": [
+          { "name": "電子材料事業", "pct": null, "tag": "營收約 39~40%", "desc": "12 吋半導體矽晶圓、EUV 光阻劑、光罩基板與合成石英" },
+          { "name": "生活環境基盤材料", "pct": null, "tag": "營收約 38%", "desc": "美國子公司 Shintech 主導之 PVC 與氯鹼基礎化學品" },
+          { "name": "機能材料與加工商事", "pct": null, "tag": "機能約18% / 其他", "desc": "高階矽利光 (Silicones)、纖維素衍生物與技術服務" }
+        ]
+      }
     },
     {
       "id": "6146.T",
@@ -315,7 +520,17 @@
       "currency": "JPY",
       "segment": "jp_semi",
       "tagline": "晶圓切割、研磨與 CoWoS / HBM 薄化製程設備市占霸主",
-      "featured": false
+      "featured": false,
+      "news_query": "\"DISCO\" OR \"迪思科\" (半導體 OR 切割 OR 6146) when:30d",
+      "revenue_mix": {
+        "basis": "2025–2026 出貨與產品結構參考",
+        "note": "精密耗材與晶圓廠稼動率高度正相關，具備高毛利經常性收入特性",
+        "items": [
+          { "name": "精密加工設備 (機台本體)", "pct": 53, "desc": "約 50~55%，晶圓切割機、雷射切割與超薄研磨拋光機" },
+          { "name": "精密加工耗材 (刀片/砂輪)", "pct": 33, "desc": "約 30~35%，隨 AI 先進封裝與 HBM 疊層數增加放量消耗" },
+          { "name": "維修保養零件與其他", "pct": 14, "desc": "約 12~15%，全球龐大裝機量之維護與零件更換" }
+        ]
+      }
     },
     {
       "id": "005930.KS",
@@ -327,7 +542,16 @@
       "currency": "KRW",
       "segment": "kr_semi",
       "tagline": "全球記憶體龍頭與 3nm/2nm GAA 先進製程晶圓代工大廠",
-      "featured": true
+      "featured": true,
+      "news_query": "\"三星\" (半導體 OR HBM OR 晶圓代工 OR 財報) when:14d",
+      "revenue_mix": {
+        "basis": "2026 Q3 財報事業群口徑（合併營收 195.3 兆韓元）",
+        "note": "DS 半導體事業群單季貢獻 147.1 兆營收與 106.5 兆營業利益（營益率逾 72%）",
+        "items": [
+          { "name": "DS 半導體事業群 (記憶體+代工+LSI)", "pct": 75.3, "desc": "DRAM、HBM4、企業級 NAND 與 2nm GAA 晶圓代工" },
+          { "name": "DX 消費電子與其他 (手機/家電/顯示器)", "pct": 24.7, "desc": "Galaxy 手機、電視家電，受記憶體成本上漲壓縮利潤" }
+        ]
+      }
     },
     {
       "id": "000660.KS",
@@ -339,7 +563,16 @@
       "currency": "KRW",
       "segment": "kr_semi",
       "tagline": "全球 HBM3 / HBM3E 高頻寬記憶體市占第一，NVIDIA 核心供應商",
-      "featured": true
+      "featured": true,
+      "news_query": "\"SK海力士\" OR \"SK hynix\" (HBM OR 財報 OR 記憶體) when:21d",
+      "revenue_mix": {
+        "basis": "2026 記憶體產品結構參考",
+        "note": "HBM 市占率約 50% 領先同業，推升 2026 年營業利益率逼近 75~80%",
+        "items": [
+          { "name": "DRAM（含 HBM3E / HBM4 & 伺服器 DDR5）", "pct": 73, "desc": "約 70~75%，HBM 為最核心高毛利引擎，長約鎖定至 2028" },
+          { "name": "NAND Flash（含 Solidigm 企業級 SSD）", "pct": 27, "desc": "約 25~30%，受惠 AI 資料中心高密度 eSSD 換機週期" }
+        ]
+      }
     }
   ]
 }

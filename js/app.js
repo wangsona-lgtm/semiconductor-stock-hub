@@ -473,6 +473,82 @@
       `
       )
       .join("");
+
+    // 個股營收來源與新聞卡片
+    renderRevenueMix(s, document.getElementById("revenueMixCard"), document.getElementById("revMixBasis"));
+    renderStockNews(s, document.getElementById("stockNewsCard"));
+  }
+
+  function escHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderRevenueMix(stock, containerEl, basisEl) {
+    if (!containerEl) return;
+    const mix = stock.revenue_mix;
+    if (basisEl) basisEl.textContent = mix && mix.basis ? mix.basis : "";
+    if (!mix || !Array.isArray(mix.items) || !mix.items.length) {
+      containerEl.innerHTML = `<div style="color:var(--text-dim);font-size:0.82rem;padding:10px">暫無營收結構資料</div>`;
+      return;
+    }
+
+    const palette = ["#38bdf8", "#818cf8", "#fbbf24", "#f472b6", "#00d084"];
+    const hasPct = mix.items.some((it) => typeof it.pct === "number");
+    let barHtml = "";
+    if (hasPct) {
+      barHtml = `<div class="mix-bar">${mix.items
+        .filter((it) => typeof it.pct === "number" && it.pct > 0)
+        .map((it, idx) => `<div class="mix-seg" style="width:${it.pct}%;background:${palette[idx % palette.length]}" title="${escHtml(it.name)}: ${it.pct}%"></div>`)
+        .join("")}</div>`;
+    }
+
+    const listHtml = `<div class="mix-list">${mix.items
+      .map((it, idx) => {
+        const color = palette[idx % palette.length];
+        const rightVal = typeof it.pct === "number" ? `${it.pct}%` : (it.tag || "核心業務");
+        return `
+          <div class="mix-item">
+            <div class="mix-item-left">
+              <span class="mix-dot" style="background:${color}"></span>
+              <div>
+                <div class="mix-name">${escHtml(it.name)}</div>
+                <div class="mix-desc">${escHtml(it.desc)}</div>
+              </div>
+            </div>
+            <div class="mix-pct mono">${escHtml(rightVal)}</div>
+          </div>
+        `;
+      })
+      .join("")}</div>`;
+
+    const noteHtml = mix.note ? `<div class="mix-note">📌 ${escHtml(mix.note)}</div>` : "";
+    containerEl.innerHTML = barHtml + listHtml + noteHtml;
+  }
+
+  function renderStockNews(stock, containerEl) {
+    if (!containerEl) return;
+    const list = stock.news || [];
+    if (!list.length) {
+      containerEl.innerHTML = `<div style="color:var(--text-dim);font-size:0.82rem;padding:10px">目前無近期焦點新聞（待下次排程更新）</div>`;
+      return;
+    }
+    containerEl.innerHTML = list
+      .map(
+        (n) => `
+        <a class="news-item" href="${escHtml(n.url)}" target="_blank" rel="noopener noreferrer">
+          <div class="news-title">${escHtml(n.title)}</div>
+          <div class="news-meta">
+            <span class="news-pub">${escHtml(n.publisher)}</span>
+            <span class="mono">${escHtml(n.date || "")}</span>
+          </div>
+        </a>
+      `
+      )
+      .join("");
   }
 
   function renderSupplyTab() {
@@ -716,6 +792,11 @@
           </div>
         </div>
       `;
+    }
+
+    const finMixBox = document.getElementById("finRevenueMixBox");
+    if (finMixBox) {
+      renderRevenueMix(active, finMixBox, null);
     }
 
     window.SemiCharts.renderFinRevenueChart(

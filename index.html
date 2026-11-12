@@ -139,6 +139,24 @@
               <div class="ret-grid" id="returnStatsGrid"></div>
             </div>
           </div>
+
+          <div class="diag-grid">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">🍰 個股營收來源與產品結構</div>
+                <span id="revMixBasis" style="font-size:0.72rem;color:var(--cyan)"></span>
+              </div>
+              <div id="revenueMixCard"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📰 個股最新財經新聞</div>
+                <span style="font-size:0.72rem;color:var(--text-dim)">每日自動抓取最新新聞</span>
+              </div>
+              <div class="news-list" id="stockNewsCard"></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -204,6 +222,7 @@
         </div>
         <div class="compare-controls" id="finStockSelector"></div>
         <div id="finHeroWrap"></div>
+        <div id="finRevenueMixBox" style="margin-top:14px"></div>
       </div>
 
       <div class="fin-charts-grid">

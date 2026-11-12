@@ -17,6 +17,7 @@ SEMI·PULSE 台美日韓半導體股票資料、技術指標與 2025 至今財�
 from __future__ import annotations
 
 import datetime
+import email.utils
 import http.cookiejar
 import json
 import math
@@ -25,6 +26,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -382,6 +384,139 @@ def fetch_yahoo_quarterly_financials(
     return quarters
 
 
+def fetch_google_news_rss(query: str, max_items: int = 5) -> List[Dict[str, str]]:
+    """從 Google News RSS (繁體中文) 擷取個股最新財經新聞"""
+    if not query:
+        return []
+    encoded_q = urllib.parse.quote(query, safe="")
+    url = f"https://news.google.com/rss/search?q={encoded_q}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
+    items_out: List[Dict[str, str]] = []
+    tz_tw = datetime.timezone(datetime.timedelta(hours=8))
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": USER_AGENT,
+                "Accept": "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            raw_xml = resp.read().decode("utf-8", errors="replace")
+        root = ET.fromstring(raw_xml)
+        seen_titles = set()
+        for item in root.findall("./channel/item"):
+            raw_title = (item.findtext("title") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            pub_raw = (item.findtext("pubDate") or "").strip()
+            source_el = item.find("source")
+            publisher = (source_el.text or "").strip() if source_el is not None and source_el.text else ""
+
+            if not raw_title or not link:
+                continue
+            # Google News 標題常附帶 " - 媒體名稱"，清理重複來源字樣
+            title = raw_title
+            if " - " in raw_title:
+                head, tail = raw_title.rsplit(" - ", 1)
+                if not publisher:
+                    publisher = tail.strip()
+                title = head.strip()
+
+            # 濾除純社群論壇灌水貼文
+            if "股市爆料同學會" in publisher or "股市爆料同學會" in raw_title:
+                continue
+            norm_key = title[:24].lower()
+            if norm_key in seen_titles:
+                continue
+            seen_titles.add(norm_key)
+
+            dt_str = ""
+            ts_sort = 0.0
+            if pub_raw:
+                try:
+                    dt = email.utils.parsedate_to_datetime(pub_raw)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=datetime.timezone.utc)
+                    dt_tw = dt.astimezone(tz_tw)
+                    dt_str = dt_tw.strftime("%Y-%m-%d %H:%M")
+                    ts_sort = dt_tw.timestamp()
+                except Exception:
+                    dt_str = pub_raw[:16]
+
+            items_out.append(
+                {
+                    "title": title,
+                    "publisher": publisher or "Google 新聞",
+                    "date": dt_str,
+                    "url": link,
+                    "_ts": ts_sort,
+                }
+            )
+            if len(items_out) >= max_items:
+                break
+    except Exception as e:
+        print(f"  [WARN] Google News RSS 讀取失敗 ({query[:20]}): {e}")
+    return items_out
+
+
+def fetch_yahoo_news(symbol: str, max_items: int = 3) -> List[Dict[str, str]]:
+    """從 Yahoo Finance Search 補充英文財經新聞"""
+    encoded_sym = urllib.parse.quote(symbol, safe="")
+    url = f"https://query1.finance.yahoo.com/v1/finance/search?q={encoded_sym}&quotesCount=0&newsCount={max_items}"
+    items_out: List[Dict[str, str]] = []
+    tz_tw = datetime.timezone(datetime.timedelta(hours=8))
+    try:
+        payload = http_get_json(url, timeout=10)
+        for n in payload.get("news") or []:
+            title = (n.get("title") or "").strip()
+            link = (n.get("link") or "").strip()
+            pub = (n.get("publisher") or "Yahoo Finance").strip()
+            ts = n.get("providerPublishTime") or 0
+            if not title or not link:
+                continue
+            dt_str = ""
+            if ts:
+                dt_str = datetime.datetime.fromtimestamp(ts, tz=tz_tw).strftime("%Y-%m-%d %H:%M")
+            items_out.append(
+                {
+                    "title": title,
+                    "publisher": pub,
+                    "date": dt_str,
+                    "url": link,
+                    "_ts": float(ts or 0),
+                }
+            )
+    except Exception:
+        pass
+    return items_out
+
+
+def fetch_stock_news(item: Dict[str, Any]) -> List[Dict[str, str]]:
+    """整合中文與國際新聞，依時間由新到舊排序"""
+    query = item.get("news_query") or f'"{item["name"].split(" ")[0]}" {item["id"]}'
+    news_list = fetch_google_news_rss(query, max_items=5)
+    if len(news_list) < 3 and item.get("market") != "TW":
+        news_list.extend(fetch_yahoo_news(item["yahoo_symbol"], max_items=3))
+    news_list.sort(key=lambda x: x.get("_ts", 0.0), reverse=True)
+    cleaned = []
+    seen = set()
+    for n in news_list:
+        k = n["title"][:24].lower()
+        if k in seen:
+            continue
+        seen.add(k)
+        cleaned.append(
+            {
+                "title": n["title"],
+                "publisher": n["publisher"],
+                "date": n["date"],
+                "url": n["url"],
+            }
+        )
+        if len(cleaned) >= 6:
+            break
+    return cleaned
+
+
 def fetch_yahoo_history(
     symbol: str, market: str, opener: urllib.request.OpenerDirector
 ) -> List[Dict[str, Any]]:
@@ -698,6 +833,7 @@ def main() -> int:
         quarters = fetch_yahoo_quarterly_financials(
             ysym, opener, existing_fin_cache.get(stock_id, {})
         )
+        news_items = fetch_stock_news(item)
 
         fin_currency = ysum.get("financial_currency") or yq.get("financial_currency") or item["currency"]
 
@@ -779,13 +915,15 @@ def main() -> int:
                     "currency": fin_currency,
                     "quarters": quarters,
                 },
+                "revenue_mix": item.get("revenue_mix"),
+                "news": news_items,
                 "signals": signals,
                 "history": history,
             }
         )
         print(
             f"  [OK] {latest_bar['d']} close={latest_bar['c']} ({change_pct:+.2f}%) | "
-            f"MA200={metrics['ma200']} GM={fundamentals['gross_margin']}% Quarters={len(quarters)}"
+            f"MA200={metrics['ma200']} GM={fundamentals['gross_margin']}% Q={len(quarters)} News={len(news_items)}"
         )
         time.sleep(0.15)
 
