@@ -1,0 +1,247 @@
+{
+  "title": "SEMI·PULSE 半導體股票分析終端",
+  "segments": [
+    {
+      "id": "ic_design",
+      "label": "IC 設計",
+      "en_label": "IC Design",
+      "order": 1,
+      "description": "運算晶片、AI ASIC 客製化設計、通訊與高速介面 IP"
+    },
+    {
+      "id": "foundry",
+      "label": "晶圓代工",
+      "en_label": "Foundry",
+      "order": 2,
+      "description": "先進製程微縮、CoWoS 先進封裝產能與成熟特殊製程"
+    },
+    {
+      "id": "osat",
+      "label": "封裝測試",
+      "en_label": "OSAT",
+      "order": 3,
+      "description": "2.5D/3D 先進封裝、高階 AI GPU 成品測試與晶圓測試"
+    },
+    {
+      "id": "equipment",
+      "label": "設備材料",
+      "en_label": "Equipment & Materials",
+      "order": 4,
+      "description": "半導體矽晶圓、濕製程設備與先進封裝關鍵耗材"
+    },
+    {
+      "id": "us_semi",
+      "label": "美股費半指標",
+      "en_label": "US SOX Leaders",
+      "order": 5,
+      "description": "費城半導體指數與全球 AI 晶片、微影設備、記憶體龍頭"
+    }
+  ],
+  "stocks": [
+    {
+      "id": "2330",
+      "yahoo_symbol": "2330.TW",
+      "name": "台積電",
+      "en_name": "TSMC",
+      "market": "TW",
+      "exchange": "TWSE",
+      "currency": "TWD",
+      "segment": "foundry",
+      "tagline": "全球先進製程與 CoWoS 晶圓代工絕對龍頭",
+      "featured": true
+    },
+    {
+      "id": "2303",
+      "yahoo_symbol": "2303.TW",
+      "name": "聯電",
+      "en_name": "UMC",
+      "market": "TW",
+      "exchange": "TWSE",
+      "currency": "TWD",
+      "segment": "foundry",
+      "tagline": "成熟與特殊製程代工主力，具備穩健現金殖利率",
+      "featured": false
+    },
+    {
+      "id": "2454",
+      "yahoo_symbol": "2454.TW",
+      "name": "聯發科",
+      "en_name": "MediaTek",
+      "market": "TW",
+      "exchange": "TWSE",
+      "currency": "TWD",
+      "segment": "ic_design",
+      "tagline": "旗艦手機 SoC、邊緣 AI 與客製化晶片設計大廠",
+      "featured": true
+    },
+    {
+      "id": "3661",
+      "yahoo_symbol": "3661.TW",
+      "name": "世芯-KY",
+      "en_name": "Alchip",
+      "market": "TW",
+      "exchange": "TWSE",
+      "currency": "TWD",
+      "segment": "ic_design",
+      "tagline": "雲端巨頭 AI ASIC 客製化晶片高成長設計服務廠",
+      "featured": true
+    },
+    {
+      "id": "3443",
+      "yahoo_symbol": "3443.TW",
+      "name": "創意",
+      "en_name": "GUC",
+      "market": "TW",
+      "exchange": "TWSE",
+      "currency": "TWD",
+      "segment": "ic_design",
+      "tagline": "台積電轉投資 ASIC 設計服務與 HBM/UCIe IP 指標",
+      "featured": false
+    },
+    {
+      "id": "2379",
+      "yahoo_symbol": "2379.TW",
+      "name": "瑞昱",
+      "en_name": "Realtek",
+      "market": "TW",
+      "exchange": "TWSE",
+      "currency": "TWD",
+      "segment": "ic_design",
+      "tagline": "高速乙太網路、Wi-Fi 7 網通與音訊控制 IC 大廠",
+      "featured": false
+    },
+    {
+      "id": "3711",
+      "yahoo_symbol": "3711.TW",
+      "name": "日月光投控",
+      "en_name": "ASE Tech",
+      "market": "TW",
+      "exchange": "TWSE",
+      "currency": "TWD",
+      "segment": "osat",
+      "tagline": "全球第一大封測廠，受惠 CoWoS 與先進封裝外溢商機",
+      "featured": true
+    },
+    {
+      "id": "2449",
+      "yahoo_symbol": "2449.TW",
+      "name": "京元電子",
+      "en_name": "KYEC",
+      "market": "TW",
+      "exchange": "TWSE",
+      "currency": "TWD",
+      "segment": "osat",
+      "tagline": "AI GPU 與高階晶片晶圓/成品測試核心夥伴",
+      "featured": false
+    },
+    {
+      "id": "6488",
+      "yahoo_symbol": "6488.TWO",
+      "name": "環球晶",
+      "en_name": "GlobalWafers",
+      "market": "TW",
+      "exchange": "TPEx",
+      "currency": "TWD",
+      "segment": "equipment",
+      "tagline": "全球前三大 12 吋半導體矽晶圓與化合物晶圓製造商",
+      "featured": false
+    },
+    {
+      "id": "3131",
+      "yahoo_symbol": "3131.TWO",
+      "name": "弘塑",
+      "en_name": "Scientech",
+      "market": "TW",
+      "exchange": "TPEx",
+      "currency": "TWD",
+      "segment": "equipment",
+      "tagline": "先進封裝濕製程與晶圓清洗設備關鍵供應商",
+      "featured": false
+    },
+    {
+      "id": "^SOX",
+      "yahoo_symbol": "^SOX",
+      "name": "費城半導體指數",
+      "en_name": "PHLX Semi Index",
+      "market": "US",
+      "exchange": "INDEX",
+      "currency": "USD",
+      "segment": "us_semi",
+      "tagline": "全球半導體景氣與科技股資金風向總指標",
+      "featured": true,
+      "is_index": true
+    },
+    {
+      "id": "NVDA",
+      "yahoo_symbol": "NVDA",
+      "name": "NVIDIA 輝達",
+      "en_name": "NVIDIA Corp",
+      "market": "US",
+      "exchange": "NASDAQ",
+      "currency": "USD",
+      "segment": "us_semi",
+      "tagline": "全球 AI 加速運算 GPU、CUDA 生態與資料中心霸主",
+      "featured": true
+    },
+    {
+      "id": "TSM",
+      "yahoo_symbol": "TSM",
+      "name": "TSMC ADR",
+      "en_name": "TSMC ADR",
+      "market": "US",
+      "exchange": "NYSE",
+      "currency": "USD",
+      "segment": "us_semi",
+      "tagline": "台積電美國存託憑證，觀察外資即時定價與溢價指標",
+      "featured": true
+    },
+    {
+      "id": "ASML",
+      "yahoo_symbol": "ASML",
+      "name": "ASML 艾司摩爾",
+      "en_name": "ASML Holding",
+      "market": "US",
+      "exchange": "NASDAQ",
+      "currency": "USD",
+      "segment": "us_semi",
+      "tagline": "EUV 極紫外光微影曝光機全球唯一獨家設備商",
+      "featured": false
+    },
+    {
+      "id": "AMD",
+      "yahoo_symbol": "AMD",
+      "name": "AMD 超微",
+      "en_name": "Advanced Micro Devices",
+      "market": "US",
+      "exchange": "NASDAQ",
+      "currency": "USD",
+      "segment": "us_semi",
+      "tagline": "資料中心 EPYC 伺服器 CPU 與 Instinct AI 加速器主力",
+      "featured": false
+    },
+    {
+      "id": "AVGO",
+      "yahoo_symbol": "AVGO",
+      "name": "Broadcom 博通",
+      "en_name": "Broadcom Inc.",
+      "market": "US",
+      "exchange": "NASDAQ",
+      "currency": "USD",
+      "segment": "us_semi",
+      "tagline": "客製化 AI ASIC 與超大規模資料中心高速網通晶片龍頭",
+      "featured": false
+    },
+    {
+      "id": "MU",
+      "yahoo_symbol": "MU",
+      "name": "Micron 美光",
+      "en_name": "Micron Technology",
+      "market": "US",
+      "exchange": "NASDAQ",
+      "currency": "USD",
+      "segment": "us_semi",
+      "tagline": "HBM3E 高頻寬記憶體、DRAM 與 NAND 景氣指標廠",
+      "featured": false
+    }
+  ]
+}

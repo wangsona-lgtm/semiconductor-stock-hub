@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEMI·PULSE 半導體股票分析終端｜台美半導體供應鏈與技術分析</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+
+  <!-- 頂部導覽列 -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect x="6" y="6" width="12" height="12" rx="2" stroke="#38bdf8" stroke-width="1.8"/>
+            <rect x="9.5" y="9.5" width="5" height="5" rx="1" fill="#818cf8"/>
+            <path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">SEMI·PULSE <span class="accent">半導體股情終端</span></div>
+          <div class="brand-sub">台股半導體供應鏈 × 美股費半指標｜技術線圖・基本面估值・每日自動更新</div>
+        </div>
+      </div>
+
+      <div class="topbar-meta">
+        <span class="pill-tag pill-convention">
+          <span style="color:var(--up);font-weight:800">▲紅漲</span> / <span style="color:var(--down);font-weight:800">▼綠跌</span>
+        </span>
+        <span class="pill-tag">
+          <span class="dot"></span>
+          <span id="dataDateLabel" class="mono">資料載入中...</span>
+        </span>
+        <div class="search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+          <input type="text" id="globalSearch" placeholder="搜尋代號或名稱 (2330, NVDA)" aria-label="搜尋半導體股票">
+        </div>
+        <button class="btn btn-primary" id="exportCsvBtn" title="下載目前完整數據為 Excel 相容 CSV">
+          匯出 CSV
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 焦點行情跑馬燈列 -->
+    <section class="ticker-strip" id="tickerStrip" aria-label="焦點半導體標的"></section>
+
+    <!-- 市場脈搏 KPI 卡 -->
+    <section class="kpi-grid" id="kpiGrid"></section>
+
+    <!-- 四大分析工作區分頁 -->
+    <nav class="nav-tabs" aria-label="分析功能分頁">
+      <button class="nav-tab active" data-tab="terminal">📊 個股技術分析終端</button>
+      <button class="nav-tab" data-tab="supply">🔗 供應鏈全景與基本面矩陣</button>
+      <button class="nav-tab" data-tab="compare">⚡ 多股走勢對比與排行</button>
+      <button class="nav-tab" data-tab="pipeline">⚙️ 自選股與自動更新機制</button>
+    </nav>
+
+    <!-- 分頁 1：個股技術分析終端 -->
+    <section class="tab-panel active" id="tab-terminal">
+      <div class="terminal-layout">
+        <!-- 左側選股清單 -->
+        <aside class="stock-sidebar">
+          <div class="sidebar-filter-row" id="sidebarFilters"></div>
+          <div id="stockSidebarList"></div>
+        </aside>
+
+        <!-- 右側分析主畫面 -->
+        <div class="terminal-main">
+          <div class="card" id="stockHeroWrap">
+            <div style="padding:30px;text-align:center;color:var(--text-muted)">正在載入半導體行情資料...</div>
+          </div>
+
+          <div class="card">
+            <div class="chart-toolbar">
+              <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+                <div class="btn-group" role="group" aria-label="圖表型態">
+                  <button class="tool-btn chart-mode-btn active" data-mode="candle">K 線圖</button>
+                  <button class="tool-btn chart-mode-btn" data-mode="area">收盤趨勢</button>
+                </div>
+                <div class="btn-group" role="group" aria-label="時間區間">
+                  <button class="tool-btn chart-range-btn" data-range="1M">1M</button>
+                  <button class="tool-btn chart-range-btn active" data-range="3M">3M</button>
+                  <button class="tool-btn chart-range-btn" data-range="6M">6M</button>
+                  <button class="tool-btn chart-range-btn" data-range="ALL">1Y</button>
+                </div>
+              </div>
+
+              <div class="overlay-checks">
+                <label class="chk-chip"><input type="checkbox" id="chkMa5"><span class="swatch" style="background:#fbbf24"></span>MA5</label>
+                <label class="chk-chip"><input type="checkbox" id="chkMa20"><span class="swatch" style="background:#38bdf8"></span>MA20</label>
+                <label class="chk-chip"><input type="checkbox" id="chkMa60"><span class="swatch" style="background:#a78bfa"></span>MA60</label>
+                <label class="chk-chip"><input type="checkbox" id="chkBB"><span class="swatch" style="background:#818cf8"></span>布林通道</label>
+              </div>
+
+              <div class="btn-group" role="group" aria-label="副圖技術指標">
+                <button class="tool-btn sub-type-btn active" data-sub="volume">成交量</button>
+                <button class="tool-btn sub-type-btn" data-sub="rsi">RSI(14)</button>
+                <button class="tool-btn sub-type-btn" data-sub="macd">MACD</button>
+              </div>
+            </div>
+
+            <div class="chart-canvas-box">
+              <div class="chart-hud" id="terminalHud"></div>
+              <canvas id="terminalCanvas" class="chart-canvas"></canvas>
+            </div>
+          </div>
+
+          <div class="diag-grid">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">🧭 技術指標自動判讀</div>
+                <span style="font-size:0.72rem;color:var(--text-dim)">依據收盤、均線、RSI 與 MACD 即時運算</span>
+              </div>
+              <div class="signal-list" id="signalList"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📐 區間報酬與風險數據</div>
+                <span style="font-size:0.72rem;color:var(--text-dim)">年化波動率 / 均線乖離</span>
+              </div>
+              <div class="ret-grid" id="returnStatsGrid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分頁 2：供應鏈全景與基本面矩陣 -->
+    <section class="tab-panel" id="tab-supply">
+      <div class="pipeline-flow" id="pipelineFlow"></div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">🎯 本益比 (P/E) × 近 20 日動能四象限分佈圖</div>
+          <div id="scatterInfo" style="font-size:0.78rem;color:var(--text-muted)">將滑鼠移至圓點檢視估值明細（藍色外框＝台股、紫色外框＝美股）</div>
+        </div>
+        <div class="chart-canvas-box">
+          <canvas id="scatterCanvas" class="chart-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 半導體供應鏈估值與技術面總表（點擊欄位標題可排序）</div>
+          <div class="sidebar-filter-row" id="tableSegmentFilters" style="margin-bottom:0"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="fundamentalsTable">
+            <thead>
+              <tr>
+                <th data-sort="id">標的名稱 / 代號</th>
+                <th>供應鏈定位</th>
+                <th data-sort="close">最新收盤</th>
+                <th data-sort="ret_1d">單日 %</th>
+                <th data-sort="ret_5d">5日 %</th>
+                <th data-sort="ret_20d">20日 %</th>
+                <th data-sort="ret_60d">60日 %</th>
+                <th data-sort="pe">本益比 P/E</th>
+                <th data-sort="pb">淨值比 P/B</th>
+                <th data-sort="yield">殖利率 %</th>
+                <th data-sort="rsi14">RSI(14)</th>
+                <th data-sort="bias_ma60">季線乖離</th>
+              </tr>
+            </thead>
+            <tbody id="fundamentalsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分頁 3：多股走勢對比與強弱排行 -->
+    <section class="tab-panel" id="tab-compare">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚡ 多股相對強弱走勢對比（Base-100 累積報酬率 %）</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <div class="btn-group">
+              <button class="tool-btn preset-btn" data-preset="tsmc">台積電雙雄 vs NVDA</button>
+              <button class="tool-btn preset-btn" data-preset="ai_asic">AI ASIC 設計</button>
+              <button class="tool-btn preset-btn" data-preset="foundry_equip">晶圓與設備</button>
+              <button class="tool-btn preset-btn" data-preset="us_sox">美股費半核心</button>
+            </div>
+            <div class="btn-group">
+              <button class="tool-btn cmp-range-btn" data-range="1M">1M</button>
+              <button class="tool-btn cmp-range-btn active" data-range="3M">3M</button>
+              <button class="tool-btn cmp-range-btn" data-range="6M">6M</button>
+              <button class="tool-btn cmp-range-btn" data-range="ALL">1Y</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="compare-controls" id="compareChips"></div>
+        <div class="chart-canvas-box">
+          <div class="chart-hud" id="compareHud"></div>
+          <canvas id="compareCanvas" class="chart-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="leaderboard-grid" id="leaderboardGrid"></div>
+    </section>
+
+    <!-- 分頁 4：自選股與自動更新機制 -->
+    <section class="tab-panel" id="tab-pipeline">
+      <div class="arch-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">★ 我的半導體自選清單</div>
+            <span style="font-size:0.75rem;color:var(--text-dim)">自動記憶於本機瀏覽器</span>
+          </div>
+          <div id="watchlistCards"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🤖 盤後資料擷取與 GitHub Actions 自動化</div>
+          </div>
+          <p style="font-size:0.84rem;color:var(--text-muted);margin-bottom:12px">
+            本網站採用靜態前端搭配 Python 自動排程管道：每個交易日台股盤後（16:00 TST）與美股收盤後（06:30 TST），透過
+            <code class="mono" style="color:var(--cyan)">scripts/fetch_stocks.py</code> 向臺灣證券交易所（TWSE）、櫃買中心（TPEx）與 Yahoo Finance 擷取真實行情與本益比／殖利率資料，重新運算技術指標並更新
+            <code class="mono" style="color:var(--cyan)">data/stocks.json</code>。
+          </p>
+          <div style="font-size:0.8rem;font-weight:700;margin-bottom:6px;color:var(--cyan)">目前追蹤清單（可編輯 config/stocks_config.json 擴充）</div>
+          <pre class="code-block" id="configPreview"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>SEMI·PULSE 半導體股票分析終端 ｜ 資料來源：TWSE 臺灣證券交易所、TPEx 櫃買中心、Yahoo Finance</span>
+    <span>⚠️ 本網站數據與技術訊號僅供研究與程式分析展示，不構成任何投資建議。</span>
+  </footer>
+
+  <!-- 本機 file:// 備援資料載入，HTTP 環境會優先讀取最新 stocks.json -->
+  <script src="./data/stocks.js"></script>
+  <script src="./js/indicators.js"></script>
+  <script src="./js/charts.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

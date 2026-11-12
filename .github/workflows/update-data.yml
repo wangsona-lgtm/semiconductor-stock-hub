@@ -1,0 +1,39 @@
+name: Update Semiconductor Stock Data
+
+on:
+  schedule:
+    # 台灣股市盤後與估值更新 (週一至週五 16:00 UTC+8)
+    - cron: "0 8 * * 1-5"
+    # 美國股市收盤後更新 (週一至週五 06:30 UTC+8)
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch latest TWSE / TPEx / US SOX data
+        run: python scripts/fetch_stocks.py
+
+      - name: Commit and push updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/stocks.json data/stocks.js
+          if git diff --staged --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "chore(data): update semiconductor stock data ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push
+          fi
