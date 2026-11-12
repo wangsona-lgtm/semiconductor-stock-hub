@@ -73,6 +73,9 @@ jobs:
         with:
           path: "."
 
+      - name: Wait for artifact propagation
+        run: sleep 10
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
