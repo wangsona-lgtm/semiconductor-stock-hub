@@ -165,7 +165,12 @@
     if (!el || !state.data) return;
     const twD = state.data.data_date_tw || "—";
     const usD = state.data.data_date_us || "—";
-    el.textContent = `台股 ${twD} ｜ 美股 ${usD}`;
+    let genTime = "";
+    if (state.data.generated_at) {
+      const m = String(state.data.generated_at).match(/T(\d{2}:\d{2})/);
+      if (m) genTime = ` ｜ 更新 ${m[1]}`;
+    }
+    el.textContent = `台股 ${twD} ｜ 美股 ${usD}${genTime}`;
   }
 
   function renderTickerStrip() {
@@ -703,6 +708,17 @@
       });
     }
 
+    const statusEl = document.getElementById("updateStatusBox");
+    if (statusEl) {
+      const genText = state.data.generated_at ? state.data.generated_at.replace("T", " ").slice(0, 19) : "—";
+      statusEl.innerHTML = `
+        <div><strong>上次排程產生時間：</strong><span class="mono" style="color:var(--cyan)">${genText} (UTC+8)</span></div>
+        <div style="margin-top:4px;color:var(--text-muted)">
+          台股最新交易日：<span class="mono">${state.data.data_date_tw || "—"}</span> ｜ 美股最新交易日：<span class="mono">${state.data.data_date_us || "—"}</span> ｜ 追蹤標的：<span class="mono">${state.data.stocks.length} 檔</span>
+        </div>
+      `;
+    }
+
     const cfgEl = document.getElementById("configPreview");
     const summaryList = state.data.stocks.map((s) => `${s.id.padEnd(6, " ")} | ${s.segment_label.padEnd(6, " ")} | ${s.name} (${s.yahoo_symbol})`).join("\n");
     cfgEl.textContent = summaryList;
@@ -759,6 +775,30 @@
     });
 
     document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
+
+    const handleRefresh = async (btn) => {
+      if (!btn) return;
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "更新中...";
+      try {
+        state.seriesCache.clear();
+        await loadData();
+        renderAll();
+        btn.textContent = "✓ 已同步最新";
+      } catch (_) {
+        btn.textContent = "載入失敗";
+      } finally {
+        setTimeout(() => {
+          btn.textContent = origText;
+          btn.disabled = false;
+        }, 1600);
+      }
+    };
+    const refreshBtn = document.getElementById("refreshDataBtn");
+    if (refreshBtn) refreshBtn.addEventListener("click", () => handleRefresh(refreshBtn));
+    const pipeRefreshBtn = document.getElementById("pipelineRefreshBtn");
+    if (pipeRefreshBtn) pipeRefreshBtn.addEventListener("click", () => handleRefresh(pipeRefreshBtn));
 
     document.querySelectorAll(".chart-mode-btn").forEach((btn) => {
       btn.addEventListener("click", () => {

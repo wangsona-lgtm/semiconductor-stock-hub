@@ -43,6 +43,9 @@
           </svg>
           <input type="text" id="globalSearch" placeholder="搜尋代號或名稱 (2330, NVDA)" aria-label="搜尋半導體股票">
         </div>
+        <button class="btn" id="refreshDataBtn" title="從伺服器重新載入最新盤後 JSON 資料">
+          ↻ 更新檢查
+        </button>
         <button class="btn btn-primary" id="exportCsvBtn" title="下載目前完整數據為 Excel 相容 CSV">
           匯出 CSV
         </button>
@@ -223,13 +226,19 @@
 
         <div class="card">
           <div class="card-header">
-            <div class="card-title">🤖 盤後資料擷取與 GitHub Actions 自動化</div>
+            <div class="card-title">🤖 每日自動更新排程與 GitHub Actions</div>
           </div>
           <p style="font-size:0.84rem;color:var(--text-muted);margin-bottom:12px">
-            本網站採用靜態前端搭配 Python 自動排程管道：每個交易日台股盤後（16:00 TST）與美股收盤後（06:30 TST），透過
-            <code class="mono" style="color:var(--cyan)">scripts/fetch_stocks.py</code> 向臺灣證券交易所（TWSE）、櫃買中心（TPEx）與 Yahoo Finance 擷取真實行情與本益比／殖利率資料，重新運算技術指標並更新
-            <code class="mono" style="color:var(--cyan)">data/stocks.json</code>。
+            本網站已綁定 GitHub Actions 每日排程（每天台灣時間 <strong style="color:var(--cyan)">06:30</strong> 美股收盤後、<strong style="color:var(--cyan)">16:00 / 18:00</strong> 台股盤後與估值公布後自動執行），透過
+            <code class="mono" style="color:var(--cyan)">scripts/fetch_stocks.py</code> 擷取真實資料並自動重新部署 GitHub Pages。
           </p>
+          <div id="updateStatusBox" style="margin-bottom:12px;padding:10px 12px;border-radius:10px;background:rgba(15,23,42,0.7);border:1px solid var(--border);font-size:0.8rem"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+            <a class="btn btn-primary" href="https://github.com/wangsona-lgtm/semiconductor-stock-hub/actions/workflows/update-data.yml" target="_blank" rel="noopener" style="text-decoration:none">
+              ⚡ 前往 GitHub Actions 手動立即更新
+            </a>
+            <button class="btn" id="pipelineRefreshBtn">↻ 重新讀取最新資料</button>
+          </div>
           <div style="font-size:0.8rem;font-weight:700;margin-bottom:6px;color:var(--cyan)">目前追蹤清單（可編輯 config/stocks_config.json 擴充）</div>
           <pre class="code-block" id="configPreview"></pre>
         </div>

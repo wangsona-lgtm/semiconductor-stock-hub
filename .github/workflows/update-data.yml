@@ -1,22 +1,36 @@
-name: Update Semiconductor Stock Data
+name: Update Semiconductor Stock Data & Deploy Pages
 
 on:
+  push:
+    branches:
+      - main
   schedule:
-    # 台灣股市盤後與估值更新 (週一至週五 16:00 UTC+8)
-    - cron: "0 8 * * 1-5"
-    # 美國股市收盤後更新 (週一至週五 06:30 UTC+8)
-    - cron: "30 22 * * 1-5"
+    # 台灣股市盤後初步更新 (每日 16:00 UTC+8)
+    - cron: "0 8 * * *"
+    # 台灣股市盤後估值補強更新 (每日 18:00 UTC+8，確保 TWSE/TPEx PE/PB 完整公布)
+    - cron: "0 10 * * *"
+    # 美國股市收盤後更新 (每日 06:30 UTC+8，涵蓋夏令與冬令收盤時間)
+    - cron: "30 22 * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-and-data"
+  cancel-in-progress: false
 
 jobs:
   fetch-and-commit:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout latest main
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -34,6 +48,31 @@ jobs:
           if git diff --staged --quiet; then
             echo "No data changes to commit."
           else
-            git commit -m "chore(data): update semiconductor stock data ($(date -u +'%Y-%m-%d %H:%M UTC'))"
-            git push
+            git commit -m "chore(data): daily stock update ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push origin HEAD:main
           fi
+
+  deploy-pages:
+    needs: fetch-and-commit
+    if: always() && (needs.fetch-and-commit.result == 'success' || needs.fetch-and-commit.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout latest main with updated data
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
