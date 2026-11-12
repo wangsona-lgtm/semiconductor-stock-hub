@@ -1024,6 +1024,102 @@ table.data-table {
   line-height: 1.55;
 }
 
+/* 供應鏈互動關係圖 */
+.sg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.sg-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.sg-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lg-line {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+}
+
+.lg-dash {
+  height: 0;
+  border-top: 2px dashed #fbbf24;
+}
+
+.lg-dot {
+  height: 0;
+  border-top: 2px dotted #a78bfa;
+}
+
+.sg-canvas-scroll {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: rgba(5, 9, 20, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  padding: 6px;
+}
+
+.supply-svg {
+  display: block;
+  width: 100%;
+  min-width: 820px;
+  height: auto;
+}
+
+.sg-inspector {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  font-size: 0.82rem;
+}
+
+.sg-inspector-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+}
+
+.sg-rel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+}
+
+.sg-rel-item {
+  font-size: 0.79rem;
+  color: #cbd5e1;
+}
+
+@media (max-width: 760px) {
+  .sg-rel-grid { grid-template-columns: 1fr; }
+}
+
 .footer {
   max-width: 1460px;
   margin: 0 auto;

@@ -460,6 +460,16 @@
   function renderSupplyTab() {
     if (!state.data) return;
 
+    // 0. 互動式供應鏈關係圖
+    if (window.SemiSupplyGraph) {
+      window.SemiSupplyGraph.render(
+        document.getElementById("supplyGraphWrap"),
+        document.getElementById("supplyGraphInspector"),
+        state.stocksById,
+        (id) => selectStock(id, true)
+      );
+    }
+
     // 1. 供應鏈全景卡片
     const flowEl = document.getElementById("pipelineFlow");
     flowEl.innerHTML = state.data.segments
@@ -901,6 +911,10 @@
     bindEvents();
     try {
       await loadData();
+      const hashTab = window.location.hash.replace("#", "").trim();
+      if (["terminal", "supply", "compare", "pipeline"].includes(hashTab)) {
+        switchTab(hashTab);
+      }
       renderAll();
     } catch (err) {
       document.getElementById("stockHeroWrap").innerHTML = `
