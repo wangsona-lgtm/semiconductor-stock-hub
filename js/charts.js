@@ -625,13 +625,20 @@ window.SemiCharts = (function () {
       return;
     }
 
-    const days = { "1M": 22, "3M": 66, "6M": 130, "ALL": 260 }[rangeKey] || 66;
-
-    // 彙整所有日期聯集並取最近 N 日
+    // 彙整所有日期聯集並依 rangeKey 切片
     const dateSet = new Set();
     selectedStocks.forEach((s) => s.history.forEach((h) => dateSet.add(h.d)));
     const allDates = Array.from(dateSet).sort();
-    const dates = allDates.slice(Math.max(0, allDates.length - days));
+    let dates;
+    if (rangeKey === "FROM_2025") {
+      const idx25 = allDates.findIndex((d) => d >= "2025-01-01");
+      dates = idx25 >= 0 ? allDates.slice(idx25) : allDates;
+    } else if (rangeKey === "ALL" || rangeKey === "2Y") {
+      dates = allDates;
+    } else {
+      const days = { "1M": 22, "3M": 66, "6M": 130, "1Y": 252 }[rangeKey] || 66;
+      dates = allDates.slice(Math.max(0, allDates.length - days));
+    }
     if (dates.length < 2) return;
 
     // 為每檔標的對齊日期並計算累積報酬率 %
@@ -775,9 +782,361 @@ window.SemiCharts = (function () {
     canvas.ontouchend = () => draw(null);
   }
 
+  function fmtMoneyShort(val, finCurrency) {
+    if (val === null || val === undefined || Number.isNaN(val)) return "—";
+    const sign = val < 0 ? "-" : "";
+    const abs = Math.abs(val);
+    if (finCurrency === "USD" || finCurrency === "EUR") {
+      const sym = finCurrency === "EUR" ? "€" : "$";
+      if (abs >= 1e9) return `${sign}${sym}${(abs / 1e9).toFixed(2)}B`;
+      if (abs >= 1e6) return `${sign}${sym}${(abs / 1e6).toFixed(0)}M`;
+      return `${sign}${sym}${abs.toFixed(0)}`;
+    }
+    const sym = finCurrency === "JPY" ? "¥" : finCurrency === "KRW" ? "₩" : "NT$";
+    if (abs >= 1e12) return `${sign}${sym}${(abs / 1e12).toFixed(2)}兆`;
+    if (abs >= 1e8) return `${sign}${sym}${(abs / 1e8).toFixed(0)}億`;
+    return `${sign}${sym}${abs.toFixed(0)}`;
+  }
+
+  /**
+   * 財報圖 A：單季營收 vs 營業利益 / 淨利柱狀圖
+   */
+  function renderFinRevenueChart(canvas, hudEl, quarters, finCurrency) {
+    if (!canvas) return;
+    const { ctx, width, height } = setupHiDPI(canvas, 280);
+    ctx.clearRect(0, 0, width, height);
+    if (!quarters || !quarters.length) {
+      if (hudEl) hudEl.innerHTML = `<span style="color:#94a3b8">此標的無可用季度財報數據</span>`;
+      return;
+    }
+
+    const pad = { left: 12, right: 76, top: 20, bottom: 28 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const n = quarters.length;
+
+    let minV = 0;
+    let maxV = 0;
+    quarters.forEach((q) => {
+      [q.rev, q.op, q.ni].forEach((v) => {
+        if (v !== null && v !== undefined) {
+          minV = Math.min(minV, v);
+          maxV = Math.max(maxV, v);
+        }
+      });
+    });
+    if (maxV === minV) { maxV = 100; minV = 0; }
+    const span = maxV - minV;
+    maxV += span * 0.1;
+    if (minV < 0) minV -= span * 0.08;
+
+    const yFor = (v) => pad.top + (1 - (v - minV) / (maxV - minV)) * plotH;
+    const zeroY = yFor(0);
+    const slotW = plotW / n;
+
+    const updateHud = (idx) => {
+      if (!hudEl) return;
+      const q = quarters[idx !== null ? idx : n - 1];
+      const qoq = q.qoq_rev_pct !== null && q.qoq_rev_pct !== undefined
+        ? `<span class="${q.qoq_rev_pct >= 0 ? "up" : "down"}">(${q.qoq_rev_pct >= 0 ? "+" : ""}${q.qoq_rev_pct.toFixed(1)}% QoQ)</span>`
+        : "";
+      hudEl.innerHTML = [
+        `<span class="mono" style="color:#e2e8f0;font-weight:700">${q.label} (${q.d})</span>`,
+        `<span style="color:#38bdf8">營收 <strong class="mono">${fmtMoneyShort(q.rev, finCurrency)}</strong> ${qoq}</span>`,
+        `<span style="color:#818cf8">營業利益 <strong class="mono">${fmtMoneyShort(q.op, finCurrency)}</strong></span>`,
+        `<span style="color:#f472b6">淨利 <strong class="mono">${fmtMoneyShort(q.ni, finCurrency)}</strong></span>`,
+        `<span>EPS <strong class="mono">${q.eps !== null && q.eps !== undefined ? q.eps.toFixed(2) : "—"}</strong></span>`,
+      ].join("");
+    };
+
+    const draw = (hoverIdx = null) => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = "10.5px 'JetBrains Mono', Consolas, monospace";
+
+      for (const t of niceTicks(minV, maxV, 5)) {
+        if (t < minV || t > maxV) continue;
+        const y = yFor(t);
+        ctx.strokeStyle = Math.abs(t) < 1 ? "rgba(148,163,184,0.4)" : COLORS.grid;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+        ctx.fillStyle = COLORS.axisText;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fmtMoneyShort(t, finCurrency), pad.left + plotW + 6, y);
+      }
+
+      const barW = Math.min(26, Math.max(8, slotW * 0.24));
+      quarters.forEach((q, i) => {
+        const cx = pad.left + (i + 0.5) * slotW;
+        if (hoverIdx === i) {
+          ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
+          ctx.fillRect(pad.left + i * slotW + 2, pad.top, slotW - 4, plotH);
+        }
+
+        const drawBar = (val, xOffset, color) => {
+          if (val === null || val === undefined) return;
+          const yVal = yFor(val);
+          ctx.fillStyle = color;
+          ctx.fillRect(cx + xOffset, Math.min(zeroY, yVal), barW, Math.max(2, Math.abs(yVal - zeroY)));
+        };
+
+        drawBar(q.rev, -barW * 1.55, "rgba(56, 189, 248, 0.85)");
+        drawBar(q.op, -barW * 0.5, q.op >= 0 ? "rgba(129, 140, 248, 0.85)" : "rgba(255, 77, 90, 0.78)");
+        drawBar(q.ni, barW * 0.55, q.ni >= 0 ? "rgba(244, 114, 182, 0.85)" : "rgba(255, 77, 90, 0.9)");
+
+        ctx.fillStyle = hoverIdx === i ? "#ffffff" : "#94a3b8";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.font = "11px 'JetBrains Mono', Consolas, monospace";
+        ctx.fillText(q.label, cx, pad.top + plotH + 8);
+      });
+
+      updateHud(hoverIdx);
+    };
+
+    draw(null);
+    canvas.onmousemove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const idx = Math.floor(((e.clientX - rect.left - pad.left) / plotW) * n);
+      draw(idx >= 0 && idx < n ? idx : null);
+    };
+    canvas.onmouseleave = () => draw(null);
+  }
+
+  /**
+   * 財報圖 B：毛利率 / 營業利益率 / 淨利率三率折線趨勢圖
+   */
+  function renderFinMarginChart(canvas, hudEl, quarters) {
+    if (!canvas) return;
+    const { ctx, width, height } = setupHiDPI(canvas, 280);
+    ctx.clearRect(0, 0, width, height);
+    if (!quarters || !quarters.length) {
+      if (hudEl) hudEl.innerHTML = `<span style="color:#94a3b8">無雙率趨勢數據</span>`;
+      return;
+    }
+
+    const pad = { left: 14, right: 54, top: 20, bottom: 28 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const n = quarters.length;
+
+    let minM = 0;
+    let maxM = 20;
+    quarters.forEach((q) => {
+      [q.gm_pct, q.om_pct, q.nm_pct].forEach((v) => {
+        if (v !== null && v !== undefined) {
+          minM = Math.min(minM, v);
+          maxM = Math.max(maxM, v);
+        }
+      });
+    });
+    const mPad = (maxM - minM) * 0.12 || 8;
+    minM -= mPad;
+    maxM += mPad;
+
+    const xFor = (i) => pad.left + ((i + 0.5) / n) * plotW;
+    const yFor = (v) => pad.top + (1 - (v - minM) / (maxM - minM)) * plotH;
+
+    const updateHud = (idx) => {
+      if (!hudEl) return;
+      const q = quarters[idx !== null ? idx : n - 1];
+      const fmtM = (v) => (v !== null && v !== undefined ? v.toFixed(1) + "%" : "—");
+      hudEl.innerHTML = [
+        `<span class="mono" style="color:#e2e8f0;font-weight:700">${q.label}</span>`,
+        `<span style="color:#fbbf24">毛利率 <strong class="mono">${fmtM(q.gm_pct)}</strong></span>`,
+        `<span style="color:#38bdf8">營業利益率 <strong class="mono">${fmtM(q.om_pct)}</strong></span>`,
+        `<span style="color:#f472b6">淨利率 <strong class="mono">${fmtM(q.nm_pct)}</strong></span>`,
+      ].join("");
+    };
+
+    const draw = (hoverIdx = null) => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = "10.5px 'JetBrains Mono', Consolas, monospace";
+
+      for (const t of niceTicks(minM, maxM, 5)) {
+        if (t < minM || t > maxM) continue;
+        const y = yFor(t);
+        ctx.strokeStyle = Math.abs(t) < 0.01 ? "rgba(148,163,184,0.45)" : COLORS.grid;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+        ctx.fillStyle = COLORS.axisText;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(t.toFixed(0) + "%", pad.left + plotW + 6, y);
+      }
+
+      if (hoverIdx !== null) {
+        const hx = xFor(hoverIdx);
+        ctx.save();
+        ctx.strokeStyle = COLORS.crosshair;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(hx, pad.top);
+        ctx.lineTo(hx, pad.top + plotH);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const drawSeries = (key, color) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        let st = false;
+        quarters.forEach((q, i) => {
+          const v = q[key];
+          if (v === null || v === undefined) return;
+          const x = xFor(i), y = yFor(v);
+          if (!st) { ctx.moveTo(x, y); st = true; } else { ctx.lineTo(x, y); }
+        });
+        ctx.stroke();
+
+        quarters.forEach((q, i) => {
+          const v = q[key];
+          if (v === null || v === undefined) return;
+          const x = xFor(i), y = yFor(v);
+          ctx.beginPath();
+          ctx.arc(x, y, hoverIdx === i ? 5.5 : 4, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+        });
+      };
+
+      drawSeries("gm_pct", "#fbbf24");
+      drawSeries("om_pct", "#38bdf8");
+      drawSeries("nm_pct", "#f472b6");
+
+      quarters.forEach((q, i) => {
+        ctx.fillStyle = hoverIdx === i ? "#ffffff" : "#94a3b8";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(q.label, xFor(i), pad.top + plotH + 8);
+      });
+
+      updateHud(hoverIdx);
+    };
+
+    draw(null);
+    canvas.onmousemove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const idx = Math.floor(((e.clientX - rect.left - pad.left) / plotW) * n);
+      draw(idx >= 0 && idx < n ? idx : null);
+    };
+    canvas.onmouseleave = () => draw(null);
+  }
+
+  /**
+   * 財報圖 C：營業現金流 (OCF) vs 資本支出 (CapEx) vs 自由現金流 (FCF)
+   */
+  function renderFinCashflowChart(canvas, hudEl, quarters, finCurrency) {
+    if (!canvas) return;
+    const { ctx, width, height } = setupHiDPI(canvas, 280);
+    ctx.clearRect(0, 0, width, height);
+    if (!quarters || !quarters.length) {
+      if (hudEl) hudEl.innerHTML = `<span style="color:#94a3b8">無現金流數據</span>`;
+      return;
+    }
+
+    const pad = { left: 12, right: 76, top: 20, bottom: 28 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const n = quarters.length;
+
+    let minV = 0;
+    let maxV = 0;
+    quarters.forEach((q) => {
+      [q.ocf, q.capex, q.fcf].forEach((v) => {
+        if (v !== null && v !== undefined) {
+          minV = Math.min(minV, v);
+          maxV = Math.max(maxV, v);
+        }
+      });
+    });
+    if (maxV === minV) { maxV = 100; minV = 0; }
+    const span = maxV - minV;
+    maxV += span * 0.1;
+    if (minV < 0) minV -= span * 0.1;
+
+    const yFor = (v) => pad.top + (1 - (v - minV) / (maxV - minV)) * plotH;
+    const zeroY = yFor(0);
+    const slotW = plotW / n;
+
+    const updateHud = (idx) => {
+      if (!hudEl) return;
+      const q = quarters[idx !== null ? idx : n - 1];
+      hudEl.innerHTML = [
+        `<span class="mono" style="color:#e2e8f0;font-weight:700">${q.label}</span>`,
+        `<span style="color:#38bdf8">營業現金流 <strong class="mono">${fmtMoneyShort(q.ocf, finCurrency)}</strong></span>`,
+        `<span style="color:#fbbf24">資本支出 CapEx <strong class="mono">${fmtMoneyShort(q.capex, finCurrency)}</strong></span>`,
+        `<span style="color:${q.fcf >= 0 ? "#00d084" : "#ff4d5a"}">自由現金流 FCF <strong class="mono">${fmtMoneyShort(q.fcf, finCurrency)}</strong></span>`,
+        `<span>資本密度 <strong class="mono">${q.capex_pct !== null && q.capex_pct !== undefined ? q.capex_pct.toFixed(1) + "%" : "—"}</strong></span>`,
+      ].join("");
+    };
+
+    const draw = (hoverIdx = null) => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = "10.5px 'JetBrains Mono', Consolas, monospace";
+
+      for (const t of niceTicks(minV, maxV, 5)) {
+        if (t < minV || t > maxV) continue;
+        const y = yFor(t);
+        ctx.strokeStyle = Math.abs(t) < 1 ? "rgba(148,163,184,0.45)" : COLORS.grid;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+        ctx.fillStyle = COLORS.axisText;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fmtMoneyShort(t, finCurrency), pad.left + plotW + 6, y);
+      }
+
+      const barW = Math.min(24, Math.max(8, slotW * 0.24));
+      quarters.forEach((q, i) => {
+        const cx = pad.left + (i + 0.5) * slotW;
+        if (hoverIdx === i) {
+          ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
+          ctx.fillRect(pad.left + i * slotW + 2, pad.top, slotW - 4, plotH);
+        }
+
+        const drawBar = (val, xOffset, color) => {
+          if (val === null || val === undefined) return;
+          const yVal = yFor(val);
+          ctx.fillStyle = color;
+          ctx.fillRect(cx + xOffset, Math.min(zeroY, yVal), barW, Math.max(2, Math.abs(yVal - zeroY)));
+        };
+
+        drawBar(q.ocf, -barW * 1.55, "rgba(56, 189, 248, 0.85)");
+        drawBar(q.capex, -barW * 0.5, "rgba(251, 191, 36, 0.85)");
+        drawBar(q.fcf, barW * 0.55, q.fcf >= 0 ? "rgba(0, 208, 132, 0.85)" : "rgba(255, 77, 90, 0.85)");
+
+        ctx.fillStyle = hoverIdx === i ? "#ffffff" : "#94a3b8";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(q.label, cx, pad.top + plotH + 8);
+      });
+
+      updateHud(hoverIdx);
+    };
+
+    draw(null);
+    canvas.onmousemove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const idx = Math.floor(((e.clientX - rect.left - pad.left) / plotW) * n);
+      draw(idx >= 0 && idx < n ? idx : null);
+    };
+    canvas.onmouseleave = () => draw(null);
+  }
+
   return {
     renderTerminalChart,
     renderScatterChart,
     renderCompareChart,
+    renderFinRevenueChart,
+    renderFinMarginChart,
+    renderFinCashflowChart,
   };
 })();

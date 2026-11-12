@@ -13,6 +13,7 @@
     selectedId: "2330",
     sidebarSegment: "all",
     tableSegment: "all",
+    peerSegment: "all",
     searchQuery: "",
     watchlist: new Set(),
     chartOpts: {
@@ -22,9 +23,11 @@
       showMa5: true,
       showMa20: true,
       showMa60: true,
+      showMa200: true,
       showBB: false,
     },
     tableSort: { key: "ret_20d", dir: "desc" },
+    peerSort: { key: "gm", dir: "desc" },
     compareIds: ["2330", "TSM", "NVDA", "2454"],
     compareRange: "3M",
   };
@@ -165,6 +168,7 @@
 
     if (tabId === "terminal") renderTerminal();
     if (tabId === "supply") renderSupplyTab();
+    if (tabId === "financials") renderFinancialsTab();
     if (tabId === "compare") renderCompareTab();
     if (tabId === "pipeline") renderPipelineTab();
   }
@@ -361,9 +365,11 @@
     const sign = chg > 0 ? "+" : "";
     const starred = state.watchlist.has(s.id);
 
-    const low6 = s.metrics.low_6m ?? s.latest.low;
-    const high6 = s.metrics.high_6m ?? s.latest.high;
-    const posPct = high6 > low6 ? Math.max(2, Math.min(98, ((s.latest.close - low6) / (high6 - low6)) * 100)) : 50;
+    const lowRange = s.metrics.low_52w ?? s.metrics.low_6m ?? s.latest.low;
+    const highRange = s.metrics.high_52w ?? s.metrics.high_6m ?? s.latest.high;
+    const rangeTitle = s.metrics.high_52w ? "52 週" : "近 6 月";
+    const posPct = highRange > lowRange ? Math.max(2, Math.min(98, ((s.latest.close - lowRange) / (highRange - lowRange)) * 100)) : 50;
+    const dist52 = s.metrics.dist_52w_high !== null && s.metrics.dist_52w_high !== undefined ? ` ｜ 距高點 ${s.metrics.dist_52w_high.toFixed(1)}%` : "";
 
     document.getElementById("stockHeroWrap").innerHTML = `
       <div class="stock-hero">
@@ -372,6 +378,7 @@
             <h2>${s.name} <span class="mono" style="color:var(--cyan);font-size:1.2rem">${s.id}</span></h2>
             <span class="tag-chip">${s.segment_label}</span>
             <span class="tag-chip tag-exchange mono">${s.exchange} · ${s.currency}</span>
+            ${s.fundamentals.earnings_date ? `<span class="tag-chip" style="background:rgba(251,191,36,0.12);border-color:rgba(251,191,36,0.3);color:#fde047">📅 財報 ${s.fundamentals.earnings_date}</span>` : ""}
             <button class="btn" id="heroStarBtn" style="padding:4px 10px;font-size:0.76rem">
               <span style="color:${starred ? "var(--amber)" : "var(--text-dim)"}">★</span> ${starred ? "已加自選" : "加入自選"}
             </button>
@@ -401,25 +408,25 @@
           <div class="mini-stat-val mono">${fmtVol(s.latest.volume, s)}</div>
         </div>
         <div class="mini-stat">
-          <div class="mini-stat-label">本益比 (P/E)</div>
-          <div class="mini-stat-val mono">${s.fundamentals.pe ? s.fundamentals.pe + "x" : "—"}${s.fundamentals.forward_pe ? ` <span style="font-size:0.7rem;color:var(--text-dim)">(預估 ${s.fundamentals.forward_pe}x)</span>` : ""}</div>
+          <div class="mini-stat-label">本益比 P/E (預估)</div>
+          <div class="mini-stat-val mono">${s.fundamentals.pe ? s.fundamentals.pe + "x" : "—"}${s.fundamentals.forward_pe ? ` <span style="font-size:0.72rem;color:var(--cyan)">(${s.fundamentals.forward_pe}x)</span>` : ""}</div>
         </div>
         <div class="mini-stat">
-          <div class="mini-stat-label">股價淨值比 (P/B)</div>
-          <div class="mini-stat-val mono">${s.fundamentals.pb ? s.fundamentals.pb + "x" : "—"}</div>
+          <div class="mini-stat-label">毛利率 / 營益率</div>
+          <div class="mini-stat-val mono">${s.fundamentals.gross_margin !== null && s.fundamentals.gross_margin !== undefined ? s.fundamentals.gross_margin.toFixed(1) + "%" : "—"} / ${s.fundamentals.operating_margin !== null && s.fundamentals.operating_margin !== undefined ? s.fundamentals.operating_margin.toFixed(1) + "%" : "—"}</div>
         </div>
         <div class="mini-stat">
-          <div class="mini-stat-label">${s.market !== "TW" && s.fundamentals.market_cap ? "殖利率 / 市值" : "殖利率 (Yield)"}</div>
-          <div class="mini-stat-val mono">${s.fundamentals.dividend_yield !== null && s.fundamentals.dividend_yield !== undefined ? s.fundamentals.dividend_yield + "%" : "—"}${s.market !== "TW" && s.fundamentals.market_cap ? ` · ${fmtMcap(s.fundamentals.market_cap, s)}` : ""}</div>
+          <div class="mini-stat-label">${s.market !== "TW" && s.fundamentals.market_cap ? "殖利率 / 市值" : "淨值比 P/B · 殖利率"}</div>
+          <div class="mini-stat-val mono">${s.market !== "TW" && s.fundamentals.market_cap ? `${s.fundamentals.dividend_yield !== null && s.fundamentals.dividend_yield !== undefined ? s.fundamentals.dividend_yield + "%" : "—"} · ${fmtMcap(s.fundamentals.market_cap, s)}` : `${s.fundamentals.pb ? s.fundamentals.pb + "x" : "—"} · ${s.fundamentals.dividend_yield !== null && s.fundamentals.dividend_yield !== undefined ? s.fundamentals.dividend_yield + "%" : "—"}`}</div>
         </div>
       </div>
 
       <div class="range-bar-wrap">
-        <span class="mono" style="font-size:0.75rem;color:var(--text-muted)">近 6 月低點 <strong class="down">${fmtPrice(low6, s)}</strong></span>
-        <div class="range-track" title="目前股價位於近半年區間 ${posPct.toFixed(0)}% 位置">
+        <span class="mono" style="font-size:0.75rem;color:var(--text-muted)">${rangeTitle}低點 <strong class="down">${fmtPrice(lowRange, s)}</strong></span>
+        <div class="range-track" title="目前股價位於${rangeTitle}區間 ${posPct.toFixed(0)}% 位置">
           <div class="range-thumb" style="left:${posPct.toFixed(1)}%"></div>
         </div>
-        <span class="mono" style="font-size:0.75rem;color:var(--text-muted)">近 6 月高點 <strong class="up">${fmtPrice(high6, s)}</strong>（區間位置 ${posPct.toFixed(0)}%）</span>
+        <span class="mono" style="font-size:0.75rem;color:var(--text-muted)">${rangeTitle}高點 <strong class="up">${fmtPrice(highRange, s)}</strong>（區間 ${posPct.toFixed(0)}%${dist52}）</span>
       </div>
     `;
 
@@ -445,15 +452,16 @@
 
     // 報酬率與風險指標卡
     const m = s.metrics;
+    const fmtPp = (v) => (v !== null && v !== undefined ? `${v > 0 ? "+" : ""}${v.toFixed(1)} pp` : "—");
     const retItems = [
-      { label: "近 5 日報酬", val: fmtPct(m.ret_5d), cls: chgClass(m.ret_5d) },
-      { label: "近 20 日報酬", val: fmtPct(m.ret_20d), cls: chgClass(m.ret_20d) },
-      { label: "近 60 日報酬", val: fmtPct(m.ret_60d), cls: chgClass(m.ret_60d) },
-      { label: "近 6 月最大回撤", val: m.max_drawdown_6m !== null ? m.max_drawdown_6m.toFixed(2) + "%" : "—", cls: "down" },
-      { label: "月線乖離 (vs MA20)", val: fmtPct(m.bias_ma20), cls: chgClass(m.bias_ma20) },
-      { label: "季線乖離 (vs MA60)", val: fmtPct(m.bias_ma60), cls: chgClass(m.bias_ma60) },
-      { label: "20 日年化波動率", val: m.volatility_20d !== null ? m.volatility_20d.toFixed(1) + "%" : "—", cls: "" },
-      { label: "20 日均量", val: fmtVol(m.avg_volume_20d, s), cls: "" },
+      { label: "近 5 日 / 20 日報酬", val: `${fmtPct(m.ret_5d)} / ${fmtPct(m.ret_20d)}`, cls: chgClass(m.ret_20d) },
+      { label: "近 60 日 / YTD 報酬", val: `${fmtPct(m.ret_60d)} / ${fmtPct(m.ret_ytd)}`, cls: chgClass(m.ret_ytd) },
+      { label: "2025 至今報酬", val: fmtPct(m.ret_from_2025), cls: chgClass(m.ret_from_2025) },
+      { label: "相對 SOX (1M / 3M)", val: `${fmtPp(m.vs_sox_1m)} / ${fmtPp(m.vs_sox_3m)}`, cls: chgClass(m.vs_sox_3m) },
+      { label: "月線乖離 (MA20)", val: fmtPct(m.bias_ma20), cls: chgClass(m.bias_ma20) },
+      { label: "季線乖離 (MA60)", val: fmtPct(m.bias_ma60), cls: chgClass(m.bias_ma60) },
+      { label: "年線乖離 (MA200)", val: fmtPct(m.bias_ma200), cls: chgClass(m.bias_ma200) },
+      { label: "20日波動率 / 6月回撤", val: `${m.volatility_20d !== null ? m.volatility_20d.toFixed(1) + "%" : "—"} / ${m.max_drawdown_6m !== null ? m.max_drawdown_6m.toFixed(1) + "%" : "—"}`, cls: "down" },
     ];
     document.getElementById("returnStatsGrid").innerHTML = retItems
       .map(
@@ -617,6 +625,248 @@
     });
   }
 
+  function fmtFinMoney(val, finCurrency) {
+    if (val === null || val === undefined || Number.isNaN(val)) return "—";
+    const sign = val < 0 ? "-" : "";
+    const abs = Math.abs(val);
+    if (finCurrency === "USD" || finCurrency === "EUR") {
+      const sym = finCurrency === "EUR" ? "€" : "$";
+      if (abs >= 1e9) return `${sign}${sym}${(abs / 1e9).toFixed(2)}B`;
+      if (abs >= 1e6) return `${sign}${sym}${(abs / 1e6).toFixed(1)}M`;
+      return `${sign}${sym}${abs.toFixed(0)}`;
+    }
+    const sym = finCurrency === "JPY" ? "¥" : finCurrency === "KRW" ? "₩" : "NT$";
+    if (abs >= 1e12) return `${sign}${sym}${(abs / 1e12).toFixed(2)}兆`;
+    if (abs >= 1e8) return `${sign}${sym}${(abs / 1e8).toFixed(1)}億`;
+    return `${sign}${sym}${abs.toFixed(0)}`;
+  }
+
+  function renderFinancialsTab() {
+    if (!state.data) return;
+
+    const companies = state.data.stocks.filter((s) => !s.is_index);
+    if (!companies.length) return;
+
+    let active = state.stocksById.get(state.selectedId);
+    if (!active || active.is_index) {
+      active = companies[0];
+      state.selectedId = active.id;
+    }
+
+    const selEl = document.getElementById("finStockSelector");
+    if (selEl) {
+      selEl.innerHTML = companies
+        .map((s) => {
+          const isAct = s.id === active.id ? "active" : "";
+          return `<button class="compare-chip ${isAct}" data-fin-id="${s.id}"><span class="mono" style="color:var(--cyan)">${s.id}</span> ${s.name.split(" ")[0]}</button>`;
+        })
+        .join("");
+
+      selEl.querySelectorAll("[data-fin-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.selectedId = btn.dataset.finId;
+          renderTickerStrip();
+          renderSidebar();
+          renderFinancialsTab();
+        });
+      });
+    }
+
+    const fin = active.financials || { currency: active.currency, quarters: [] };
+    const quarters = fin.quarters || [];
+    const finCur = fin.currency || active.currency;
+    const latestQ = quarters.length ? quarters[quarters.length - 1] : null;
+    const prevQ = quarters.length >= 2 ? quarters[quarters.length - 2] : null;
+
+    const heroEl = document.getElementById("finHeroWrap");
+    if (heroEl) {
+      const gmTrend = latestQ && prevQ && latestQ.gm_pct !== null && prevQ.gm_pct !== null
+        ? (latestQ.gm_pct - prevQ.gm_pct)
+        : null;
+      const gmTrendTxt = gmTrend !== null
+        ? `<span class="${gmTrend >= 0 ? "up" : "down"}" style="font-size:0.74rem">(${gmTrend >= 0 ? "+" : ""}${gmTrend.toFixed(1)} ppt vs 上季)</span>`
+        : "";
+      const revYoy = active.fundamentals.revenue_growth;
+
+      heroEl.innerHTML = `
+        <div class="fin-kpi-row">
+          <div class="mini-stat">
+            <div class="mini-stat-label">${active.name} · 最新財報季度</div>
+            <div class="mini-stat-val mono" style="color:var(--cyan)">${latestQ ? `${latestQ.label} (${latestQ.d})` : "—"}</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-label">單季營收 (${finCur})</div>
+            <div class="mini-stat-val mono">${latestQ ? fmtFinMoney(latestQ.rev, finCur) : "—"} ${revYoy !== null && revYoy !== undefined ? `<span class="${chgClass(revYoy)}" style="font-size:0.74rem">(${revYoy >= 0 ? "+" : ""}${revYoy.toFixed(1)}% YoY)</span>` : ""}</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-label">毛利率 (Gross Margin)</div>
+            <div class="mini-stat-val mono">${latestQ && latestQ.gm_pct != null ? latestQ.gm_pct.toFixed(1) + "%" : (active.fundamentals.gross_margin != null ? active.fundamentals.gross_margin.toFixed(1) + "%" : "—")} ${gmTrendTxt}</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-label">營業利益率 / 淨利率</div>
+            <div class="mini-stat-val mono">${latestQ && latestQ.om_pct != null ? latestQ.om_pct.toFixed(1) + "%" : "—"} / ${latestQ && latestQ.nm_pct != null ? latestQ.nm_pct.toFixed(1) + "%" : "—"}</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-label">資本支出 / 自由現金流</div>
+            <div class="mini-stat-val mono">${latestQ ? fmtFinMoney(latestQ.capex, finCur) : "—"} / <span class="${latestQ && latestQ.fcf < 0 ? "up" : "down"}">${latestQ ? fmtFinMoney(latestQ.fcf, finCur) : "—"}</span></div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-label">預估本益比 / 下次財報</div>
+            <div class="mini-stat-val mono">${active.fundamentals.forward_pe ? active.fundamentals.forward_pe + "x" : "—"} · ${active.fundamentals.earnings_date || "—"}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.SemiCharts.renderFinRevenueChart(
+      document.getElementById("finRevCanvas"),
+      document.getElementById("finRevHud"),
+      quarters,
+      finCur
+    );
+    window.SemiCharts.renderFinMarginChart(
+      document.getElementById("finMarginCanvas"),
+      document.getElementById("finMarginHud"),
+      quarters
+    );
+    window.SemiCharts.renderFinCashflowChart(
+      document.getElementById("finCfCanvas"),
+      document.getElementById("finCfHud"),
+      quarters,
+      finCur
+    );
+
+    const titleEl = document.getElementById("finTableTitle");
+    if (titleEl) titleEl.textContent = `📋 ${active.name} (${active.id}) 2025 至今季度財報明細`;
+    const noteEl = document.getElementById("finCurrencyNote");
+    if (noteEl) noteEl.textContent = `財報幣別：${finCur}（隨 GitHub Actions 定期更新並自動保留歷史季度）`;
+
+    const qTbody = document.getElementById("finQuartersTbody");
+    if (qTbody) {
+      if (!quarters.length) {
+        qTbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--text-dim);padding:20px">尚無可用季度財報數據</td></tr>`;
+      } else {
+        qTbody.innerHTML = [...quarters]
+          .reverse()
+          .map((q) => {
+            const qoqCls = chgClass(q.qoq_rev_pct);
+            const fcfCls = q.fcf !== null && q.fcf !== undefined ? (q.fcf >= 0 ? "down" : "up") : "";
+            return `
+              <tr>
+                <td class="mono" style="font-weight:700;color:var(--cyan)">${q.label}</td>
+                <td class="mono">${q.d}</td>
+                <td class="mono" style="font-weight:700">${fmtFinMoney(q.rev, finCur)}</td>
+                <td class="mono ${qoqCls}">${fmtPct(q.qoq_rev_pct)}</td>
+                <td class="mono">${fmtFinMoney(q.gp, finCur)}</td>
+                <td class="mono" style="color:#fbbf24;font-weight:700">${q.gm_pct !== null && q.gm_pct !== undefined ? q.gm_pct.toFixed(1) + "%" : "—"}</td>
+                <td class="mono">${fmtFinMoney(q.op, finCur)}</td>
+                <td class="mono">${q.om_pct !== null && q.om_pct !== undefined ? q.om_pct.toFixed(1) + "%" : "—"}</td>
+                <td class="mono">${fmtFinMoney(q.ni, finCur)}</td>
+                <td class="mono">${q.eps !== null && q.eps !== undefined ? q.eps.toFixed(2) : "—"}</td>
+                <td class="mono">${fmtFinMoney(q.capex, finCur)}</td>
+                <td class="mono ${fcfCls}" style="font-weight:700">${fmtFinMoney(q.fcf, finCur)}</td>
+                <td class="mono">${q.capex_pct !== null && q.capex_pct !== undefined ? q.capex_pct.toFixed(1) + "%" : "—"}</td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+    }
+
+    // 同業估值與獲利品質矩陣篩選
+    const pFiltEl = document.getElementById("peerSegmentFilters");
+    if (pFiltEl) {
+      const pills = [{ id: "all", label: "全部市場" }, ...state.data.segments.map((s) => ({ id: s.id, label: s.label }))];
+      pFiltEl.innerHTML = pills
+        .map((p) => `<button class="seg-pill ${state.peerSegment === p.id ? "active" : ""}" data-pseg="${p.id}">${p.label}</button>`)
+        .join("");
+      pFiltEl.querySelectorAll("[data-pseg]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.peerSegment = btn.dataset.pseg;
+          renderFinancialsTab();
+        });
+      });
+    }
+
+    renderPeerMatrixTable();
+  }
+
+  function renderPeerMatrixTable() {
+    const tbody = document.getElementById("peerMatrixTbody");
+    if (!tbody || !state.data) return;
+
+    const rows = state.data.stocks.filter((s) => {
+      if (s.is_index) return false;
+      if (!matchesSearch(s)) return false;
+      if (state.peerSegment !== "all" && s.segment !== state.peerSegment) return false;
+      return true;
+    });
+
+    const getVal = (s, k) => {
+      switch (k) {
+        case "id": return s.id;
+        case "mcap": return s.fundamentals.market_cap;
+        case "pe": return s.fundamentals.pe;
+        case "fpe": return s.fundamentals.forward_pe;
+        case "ev_ebitda": return s.fundamentals.ev_ebitda;
+        case "ps": return s.fundamentals.ps;
+        case "gm": return s.fundamentals.gross_margin;
+        case "om": return s.fundamentals.operating_margin;
+        case "rev_g": return s.fundamentals.revenue_growth;
+        case "vs_sox_3m": return s.metrics.vs_sox_3m;
+        case "earnings_date": return s.fundamentals.earnings_date;
+        default: return s.fundamentals.gross_margin;
+      }
+    };
+
+    const { key, dir } = state.peerSort;
+    rows.sort((a, b) => {
+      const va = getVal(a, key);
+      const vb = getVal(b, key);
+      if (va === null || va === undefined) return 1;
+      if (vb === null || vb === undefined) return -1;
+      if (typeof va === "string") return dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      return dir === "asc" ? va - vb : vb - va;
+    });
+
+    tbody.innerHTML = rows
+      .map((s) => {
+        const f = s.fundamentals;
+        const m = s.metrics;
+        const vs3 = m.vs_sox_3m;
+        const isSel = s.id === state.selectedId ? 'style="background:rgba(56,189,248,0.12)"' : "";
+        return `
+          <tr data-peer-id="${s.id}" ${isSel}>
+            <td>
+              <div style="font-weight:700">${s.name}</div>
+              <div class="mono" style="font-size:0.72rem;color:var(--text-dim)">${s.id} · ${s.market}</div>
+            </td>
+            <td class="mono">${fmtMcap(f.market_cap, s)}</td>
+            <td class="mono">${f.pe ? f.pe.toFixed(1) + "x" : "—"}</td>
+            <td class="mono" style="color:var(--cyan);font-weight:700">${f.forward_pe ? f.forward_pe.toFixed(1) + "x" : "—"}</td>
+            <td class="mono">${f.ev_ebitda ? f.ev_ebitda.toFixed(1) + "x" : "—"}</td>
+            <td class="mono">${f.ps ? f.ps.toFixed(2) + "x" : "—"}</td>
+            <td class="mono" style="color:#fbbf24;font-weight:700">${f.gross_margin !== null && f.gross_margin !== undefined ? f.gross_margin.toFixed(1) + "%" : "—"}</td>
+            <td class="mono">${f.operating_margin !== null && f.operating_margin !== undefined ? f.operating_margin.toFixed(1) + "%" : "—"}</td>
+            <td class="mono ${chgClass(f.revenue_growth)}">${f.revenue_growth !== null && f.revenue_growth !== undefined ? fmtPct(f.revenue_growth) : "—"}</td>
+            <td class="mono ${chgClass(vs3)}">${vs3 !== null && vs3 !== undefined ? `${vs3 >= 0 ? "+" : ""}${vs3.toFixed(1)} pp` : "—"}</td>
+            <td class="mono" style="color:#fde047">${f.earnings_date || "—"}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    tbody.querySelectorAll("tr").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        state.selectedId = tr.dataset.peerId;
+        renderTickerStrip();
+        renderSidebar();
+        renderFinancialsTab();
+        document.getElementById("tab-financials").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }
+
   function renderCompareTab() {
     if (!state.data) return;
 
@@ -748,8 +998,9 @@
     if (!state.data) return;
     const headers = [
       "代號", "名稱", "英文名", "市場", "交易所", "供應鏈定位", "幣別",
-      "最新日期", "收盤價", "漲跌", "單日漲跌幅(%)", "5日報酬(%)", "20日報酬(%)", "60日報酬(%)",
-      "本益比(PE)", "股價淨值比(PB)", "殖利率(%)", "MA5", "MA20", "MA60", "RSI(14)", "季線乖離(%)"
+      "最新日期", "收盤價", "漲跌", "單日漲跌幅(%)", "5日報酬(%)", "20日報酬(%)", "60日報酬(%)", "2025至今(%)",
+      "本益比(PE)", "預估本益比(Fwd PE)", "EV/EBITDA", "P/S", "股價淨值比(PB)", "殖利率(%)",
+      "毛利率(%)", "營益率(%)", "營收年增(%)", "MA20", "MA60", "MA200", "RSI(14)", "相對SOX 3M(pp)", "下次財報日"
     ];
     const esc = (v) => {
       if (v === null || v === undefined) return "";
@@ -759,9 +1010,10 @@
     const rows = state.data.stocks.map((s) => [
       s.id, s.name, s.en_name, s.market, s.exchange, s.segment_label, s.currency,
       s.latest.date, s.latest.close, s.latest.change, s.latest.change_pct,
-      s.metrics.ret_5d, s.metrics.ret_20d, s.metrics.ret_60d,
-      s.fundamentals.pe, s.fundamentals.pb, s.fundamentals.dividend_yield,
-      s.metrics.ma5, s.metrics.ma20, s.metrics.ma60, s.metrics.rsi14, s.metrics.bias_ma60
+      s.metrics.ret_5d, s.metrics.ret_20d, s.metrics.ret_60d, s.metrics.ret_from_2025,
+      s.fundamentals.pe, s.fundamentals.forward_pe, s.fundamentals.ev_ebitda, s.fundamentals.ps, s.fundamentals.pb, s.fundamentals.dividend_yield,
+      s.fundamentals.gross_margin, s.fundamentals.operating_margin, s.fundamentals.revenue_growth,
+      s.metrics.ma20, s.metrics.ma60, s.metrics.ma200, s.metrics.rsi14, s.metrics.vs_sox_3m, s.fundamentals.earnings_date
     ].map(esc).join(","));
 
     const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
@@ -786,6 +1038,7 @@
       state.searchQuery = searchInput.value;
       renderSidebar();
       if (state.activeTab === "supply") renderFundamentalsTable();
+      if (state.activeTab === "financials") renderPeerMatrixTable();
     });
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && state.data) {
@@ -857,7 +1110,21 @@
     bindChk("chkMa5", "showMa5");
     bindChk("chkMa20", "showMa20");
     bindChk("chkMa60", "showMa60");
+    bindChk("chkMa200", "showMa200");
     bindChk("chkBB", "showBB");
+
+    document.querySelectorAll("#peerMatrixTable th[data-psort]").forEach((th) => {
+      th.addEventListener("click", () => {
+        const k = th.dataset.psort;
+        if (state.peerSort.key === k) {
+          state.peerSort.dir = state.peerSort.dir === "desc" ? "asc" : "desc";
+        } else {
+          state.peerSort.key = k;
+          state.peerSort.dir = k === "id" || k === "earnings_date" ? "asc" : "desc";
+        }
+        renderPeerMatrixTable();
+      });
+    });
 
     document.querySelectorAll("#fundamentalsTable th[data-sort]").forEach((th) => {
       th.addEventListener("click", () => {
@@ -901,6 +1168,7 @@
       resizeTimer = setTimeout(() => {
         if (state.activeTab === "terminal") renderTerminal();
         if (state.activeTab === "supply") renderSupplyTab();
+        if (state.activeTab === "financials") renderFinancialsTab();
         if (state.activeTab === "compare") renderCompareTab();
       }, 140);
     });
@@ -914,6 +1182,7 @@
     renderSidebar();
     if (state.activeTab === "terminal") renderTerminal();
     if (state.activeTab === "supply") renderSupplyTab();
+    if (state.activeTab === "financials") renderFinancialsTab();
     if (state.activeTab === "compare") renderCompareTab();
     if (state.activeTab === "pipeline") renderPipelineTab();
   }
@@ -924,7 +1193,7 @@
     try {
       await loadData();
       const hashTab = window.location.hash.replace("#", "").trim();
-      if (["terminal", "supply", "compare", "pipeline"].includes(hashTab)) {
+      if (["terminal", "supply", "financials", "compare", "pipeline"].includes(hashTab)) {
         switchTab(hashTab);
       }
       renderAll();

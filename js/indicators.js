@@ -87,6 +87,7 @@ window.SemiIndicators = (function () {
     const ma5 = sma(closes, 5);
     const ma20 = sma(closes, 20);
     const ma60 = sma(closes, 60);
+    const ma200 = sma(closes, 200);
     const bb = bollinger(closes, 20, 2);
     const rsi14 = rsi(closes, 14);
     const macdObj = macd(closes, 12, 26, 9);
@@ -94,6 +95,7 @@ window.SemiIndicators = (function () {
       ma5,
       ma20,
       ma60,
+      ma200,
       bbUpper: bb.upper,
       bbLower: bb.lower,
       rsi14,
@@ -113,6 +115,7 @@ window.SemiIndicators = (function () {
     const m5 = series.ma5[i];
     const m20 = series.ma20[i];
     const m60 = series.ma60[i];
+    const m200 = series.ma200 ? series.ma200[i] : null;
     const rsiVal = series.rsi14[i];
     const histVal = series.hist[i];
     const prevHist = series.hist[i - 1];
@@ -170,6 +173,24 @@ window.SemiIndicators = (function () {
         signals.push({ type: "warn", label: "股價觸及布林通道上軌，乖離擴大" });
       } else if (c <= series.bbLower[i] * 1.005) {
         signals.push({ type: "warn", label: "股價觸及布林通道下軌，關注支撐力道" });
+      }
+    }
+
+    if (m200 !== null) {
+      const b200 = (((c - m200) / m200) * 100).toFixed(1);
+      if (c >= m200) {
+        signals.push({ type: "bull", label: `站穩年線 MA200 之上（年線乖離 +${b200}%）` });
+      } else {
+        signals.push({ type: "bear", label: `位於年線 MA200 之下（年線乖離 ${b200}%），長線仍待築底` });
+      }
+    }
+
+    if (stock.metrics && stock.metrics.vs_sox_1m !== null && stock.metrics.vs_sox_1m !== undefined) {
+      const v1m = stock.metrics.vs_sox_1m;
+      if (v1m >= 5) {
+        signals.push({ type: "bull", label: `近 1 月相對費半 ^SOX 強勢超額 +${v1m.toFixed(1)} 個百分點` });
+      } else if (v1m <= -5) {
+        signals.push({ type: "bear", label: `近 1 月相對費半 ^SOX 落後 ${v1m.toFixed(1)} 個百分點` });
       }
     }
 

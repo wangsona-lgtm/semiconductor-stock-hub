@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-SEMI·PULSE 半導體股票資料擷取與技術指標計算腳本
+SEMI·PULSE 台美日韓半導體股票資料、技術指標與 2025 至今財報趨勢擷取腳本
 資料來源:
-  - 臺灣證券交易所 (TWSE): BWIBBU_ALL (本益比/殖利率/股價淨值比), STOCK_DAY (備援行情)
+  - 臺灣證券交易所 (TWSE): BWIBBU_ALL (本益比/殖利率/股價淨值比)
   - 櫃買中心 (TPEx): tpex_mainboard_peratio_analysis (上櫃估值)
-  - Yahoo Finance: v8/finance/chart (台美股 1 年日 K 線 OHLCV), v7/finance/quote (美股估值)
+  - Yahoo Finance:
+      * v8/finance/chart (2 年日 K 線 OHLCV，完整覆蓋 2025 至今與 MA200)
+      * v7/finance/quote & v10/finance/quoteSummary (Forward PE, EV/EBITDA, P/S, 毛利率, 營益率, 下次財報日)
+      * ws/fundamentals-timeseries (2025 至今單季營收/毛利/營業利益/淨利/EPS/CapEx/FCF)
 
 輸出:
   - data/stocks.json
@@ -17,7 +20,6 @@ import datetime
 import http.cookiejar
 import json
 import math
-import os
 import sys
 import time
 import urllib.error
@@ -37,14 +39,27 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 )
 
+TIMESERIES_TYPES = [
+    "quarterlyTotalRevenue",
+    "quarterlyGrossProfit",
+    "quarterlyOperatingIncome",
+    "quarterlyNetIncome",
+    "quarterlyDilutedEPS",
+    "quarterlyOperatingCashFlow",
+    "quarterlyCapitalExpenditure",
+    "quarterlyFreeCashFlow",
+]
+
 
 def parse_float(val: Any) -> Optional[float]:
-    if val is None:
+    if val is None or isinstance(val, bool):
         return None
     if isinstance(val, (int, float)):
         if math.isnan(val) or math.isinf(val):
             return None
         return float(val)
+    if isinstance(val, dict) and "raw" in val:
+        return parse_float(val["raw"])
     s = str(val).replace(",", "").replace("%", "").replace("+", "").strip()
     if not s or s in {"-", "--", "N/A", "null", "None", "X"}:
         return None
@@ -75,8 +90,25 @@ def http_get_json(url: str, opener: Optional[urllib.request.OpenerDirector] = No
     return json.loads(raw)
 
 
+def load_existing_financials_cache() -> Dict[str, Dict[str, Dict[str, Any]]]:
+    """保留既有 stocks.json 中的歷史季度財報，避免隨時間推進遺失 2025 早期季度"""
+    cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    if not JSON_OUT_PATH.exists():
+        return cache
+    try:
+        with open(JSON_OUT_PATH, "r", encoding="utf-8") as f:
+            old = json.load(f)
+        for st in old.get("stocks", []):
+            sid = st.get("id")
+            qs = (st.get("financials") or {}).get("quarters") or []
+            if sid and qs:
+                cache[sid] = {q["d"]: q for q in qs if q.get("d")}
+    except Exception:
+        pass
+    return cache
+
+
 def fetch_twse_valuations() -> Dict[str, Dict[str, Optional[float]]]:
-    """從 TWSE BWIBBU_ALL 取得上市個股本益比、殖利率、股價淨值比"""
     url = "https://www.twse.com.tw/exchangeReport/BWIBBU_ALL?response=json"
     result: Dict[str, Dict[str, Optional[float]]] = {}
     try:
@@ -100,7 +132,6 @@ def fetch_twse_valuations() -> Dict[str, Dict[str, Optional[float]]]:
 
 
 def fetch_tpex_valuations() -> Dict[str, Dict[str, Optional[float]]]:
-    """從 TPEx OpenAPI 取得上櫃個股本益比、殖利率、股價淨值比"""
     url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_peratio_analysis"
     result: Dict[str, Dict[str, Optional[float]]] = {}
     try:
@@ -127,7 +158,6 @@ def fetch_tpex_valuations() -> Dict[str, Dict[str, Optional[float]]]:
 
 
 def create_yahoo_session() -> Tuple[urllib.request.OpenerDirector, Optional[str]]:
-    """建立帶有 cookie 與 crumb 的 Yahoo Finance session"""
     cj = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
     opener.addheaders = [("User-Agent", USER_AGENT)]
@@ -139,7 +169,7 @@ def create_yahoo_session() -> Tuple[urllib.request.OpenerDirector, Optional[str]
         with opener.open("https://query1.finance.yahoo.com/v1/test/getcrumb", timeout=10) as resp:
             crumb = resp.read().decode("utf-8").strip()
             if crumb:
-                print(f"[OK] Yahoo Finance crumb 取得成功")
+                print("[OK] Yahoo Finance crumb 取得成功")
                 return opener, crumb
     except Exception as e:
         print(f"[WARN] Yahoo Finance crumb 取得失敗: {e}")
@@ -149,7 +179,6 @@ def create_yahoo_session() -> Tuple[urllib.request.OpenerDirector, Optional[str]
 def fetch_yahoo_quotes(
     symbols: List[str], opener: urllib.request.OpenerDirector, crumb: Optional[str]
 ) -> Dict[str, Dict[str, Any]]:
-    """批次從 Yahoo v7/finance/quote 取得估值與市值"""
     if not crumb or not symbols:
         return {}
     encoded_syms = urllib.parse.quote(",".join(symbols), safe=",")
@@ -165,22 +194,22 @@ def fetch_yahoo_quotes(
             currency = item.get("currency")
             fin_currency = item.get("financialCurrency")
             pb = parse_float(item.get("priceToBook"))
-            # 針對 ADR 或異幣別財報（如 ASML 歐元財報 / TSM 台幣財報），Yahoo priceToBook 可能出現幣別錯配失真
             if pb is not None and fin_currency and currency and fin_currency != currency and pb > 60:
                 pb = None
 
             div_yield_raw = parse_float(item.get("trailingAnnualDividendYield"))
             div_yield_pct = round(div_yield_raw * 100, 2) if div_yield_raw is not None else None
+            pe_raw = parse_float(item.get("trailingPE"))
+            fpe_raw = parse_float(item.get("forwardPE"))
 
             result[sym] = {
-                "pe": round(parse_float(item.get("trailingPE")), 2) if parse_float(item.get("trailingPE")) else None,
-                "forward_pe": round(parse_float(item.get("forwardPE")), 2) if parse_float(item.get("forwardPE")) else None,
+                "pe": round(pe_raw, 2) if pe_raw is not None else None,
+                "forward_pe": round(fpe_raw, 2) if fpe_raw is not None else None,
                 "pb": round(pb, 2) if pb is not None else None,
                 "dividend_yield": div_yield_pct,
                 "market_cap": parse_float(item.get("marketCap")),
                 "currency": currency,
-                "fifty_two_week_high": parse_float(item.get("fiftyTwoWeekHigh")),
-                "fifty_two_week_low": parse_float(item.get("fiftyTwoWeekLow")),
+                "financial_currency": fin_currency,
             }
         print(f"[OK] Yahoo v7 quote 載入 {len(result)} 檔報價與估值")
     except Exception as e:
@@ -188,12 +217,177 @@ def fetch_yahoo_quotes(
     return result
 
 
+def fetch_yahoo_summary(
+    symbol: str, opener: urllib.request.OpenerDirector, crumb: Optional[str]
+) -> Dict[str, Any]:
+    """從 Yahoo v10/quoteSummary 取得 Forward P/E、EV/EBITDA、P/S、毛利率、營益率與下次財報日"""
+    if not crumb or symbol.startswith("^"):
+        return {}
+    encoded_sym = urllib.parse.quote(symbol, safe="")
+    encoded_crumb = urllib.parse.quote(crumb, safe="")
+    url = (
+        f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{encoded_sym}"
+        f"?modules=financialData,defaultKeyStatistics,summaryDetail,calendarEvents&crumb={encoded_crumb}"
+    )
+    try:
+        payload = http_get_json(url, opener=opener, timeout=15)
+        res = (payload.get("quoteSummary", {}).get("result") or [{}])[0]
+        fd = res.get("financialData") or {}
+        ks = res.get("defaultKeyStatistics") or {}
+        sd = res.get("summaryDetail") or {}
+        cal = res.get("calendarEvents") or {}
+
+        earn_dates = [
+            e.get("fmt") for e in ((cal.get("earnings") or {}).get("earningsDate") or []) if e.get("fmt")
+        ]
+
+        fpe = parse_float(ks.get("forwardPE")) or parse_float(sd.get("forwardPE"))
+        ev_ebitda = parse_float(ks.get("enterpriseToEbitda"))
+        ps = parse_float(sd.get("priceToSalesTrailing12Months"))
+        gm = parse_float(fd.get("grossMargins"))
+        om = parse_float(fd.get("operatingMargins"))
+        rev_g = parse_float(fd.get("revenueGrowth"))
+
+        return {
+            "forward_pe": round(fpe, 2) if fpe is not None else None,
+            "ev_ebitda": round(ev_ebitda, 2) if ev_ebitda is not None else None,
+            "ps": round(ps, 2) if ps is not None else None,
+            "gross_margin": round(gm * 100.0, 2) if gm is not None else None,
+            "operating_margin": round(om * 100.0, 2) if om is not None else None,
+            "revenue_growth": round(rev_g * 100.0, 2) if rev_g is not None else None,
+            "earnings_date": earn_dates[0] if earn_dates else None,
+            "financial_currency": fd.get("financialCurrency"),
+        }
+    except Exception:
+        return {}
+
+
+def fetch_yahoo_quarterly_financials(
+    symbol: str,
+    opener: urllib.request.OpenerDirector,
+    cached_quarters: Dict[str, Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """擷取 2025 至今單季財報並與歷史快取合併"""
+    if symbol.startswith("^"):
+        return []
+
+    merged: Dict[str, Dict[str, Any]] = {
+        k: dict(v) for k, v in (cached_quarters or {}).items()
+    }
+
+    encoded_sym = urllib.parse.quote(symbol, safe="")
+    types_param = ",".join(TIMESERIES_TYPES)
+    url = (
+        f"https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{encoded_sym}"
+        f"?type={types_param}&period1=1704067200&period2=1893456000"
+    )
+
+    try:
+        payload = http_get_json(url, opener=opener, timeout=18)
+        results = payload.get("timeseries", {}).get("result") or []
+
+        field_map = {
+            "quarterlyTotalRevenue": "rev",
+            "quarterlyGrossProfit": "gp",
+            "quarterlyOperatingIncome": "op",
+            "quarterlyNetIncome": "ni",
+            "quarterlyDilutedEPS": "eps",
+            "quarterlyOperatingCashFlow": "ocf",
+            "quarterlyCapitalExpenditure": "capex",
+            "quarterlyFreeCashFlow": "fcf",
+        }
+
+        for series in results:
+            t_list = (series.get("meta") or {}).get("type") or []
+            if not t_list:
+                continue
+            t_name = t_list[0]
+            key = field_map.get(t_name)
+            if not key:
+                continue
+            for item in series.get(t_name) or []:
+                d = item.get("asOfDate")
+                val = parse_float(item.get("reportedValue"))
+                if not d or val is None:
+                    continue
+                if d not in merged:
+                    merged[d] = {"d": d}
+                if key == "capex":
+                    merged[d][key] = round(abs(val), 2)
+                elif key == "eps":
+                    merged[d][key] = round(val, 2)
+                else:
+                    merged[d][key] = round(val, 2)
+    except Exception as e:
+        print(f"  [WARN] {symbol} 季度財報擷取失敗: {e}")
+
+    dates = sorted(merged.keys())
+    quarters: List[Dict[str, Any]] = []
+    for idx, d in enumerate(dates):
+        q = merged[d]
+        rev = parse_float(q.get("rev"))
+        gp = parse_float(q.get("gp"))
+        op = parse_float(q.get("op"))
+        ni = parse_float(q.get("ni"))
+        eps = parse_float(q.get("eps"))
+        ocf = parse_float(q.get("ocf"))
+        capex = parse_float(q.get("capex"))
+        fcf = parse_float(q.get("fcf"))
+        if fcf is None and ocf is not None and capex is not None:
+            fcf = round(ocf - abs(capex), 2)
+
+        gm_pct = round((gp / rev) * 100.0, 2) if (gp is not None and rev and rev > 0) else None
+        om_pct = round((op / rev) * 100.0, 2) if (op is not None and rev and rev > 0) else None
+        nm_pct = round((ni / rev) * 100.0, 2) if (ni is not None and rev and rev > 0) else None
+        capex_pct = round((abs(capex) / rev) * 100.0, 2) if (capex is not None and rev and rev > 0) else None
+
+        qoq_rev = None
+        if idx >= 1 and rev is not None:
+            prev_rev = parse_float(merged[dates[idx - 1]].get("rev"))
+            if prev_rev and prev_rev > 0:
+                qoq_rev = round(((rev - prev_rev) / prev_rev) * 100.0, 2)
+
+        yoy_rev = None
+        if idx >= 4 and rev is not None:
+            yoy_base = parse_float(merged[dates[idx - 4]].get("rev"))
+            if yoy_base and yoy_base > 0:
+                yoy_rev = round(((rev - yoy_base) / yoy_base) * 100.0, 2)
+
+        # 季度標籤 e.g. 2026Q3
+        dt_obj = datetime.date.fromisoformat(d)
+        q_num = (dt_obj.month - 1) // 3 + 1
+        label = f"{dt_obj.year} Q{q_num}"
+
+        quarters.append(
+            {
+                "d": d,
+                "label": label,
+                "rev": rev,
+                "gp": gp,
+                "op": op,
+                "ni": ni,
+                "eps": eps,
+                "ocf": ocf,
+                "capex": abs(capex) if capex is not None else None,
+                "fcf": fcf,
+                "gm_pct": gm_pct,
+                "om_pct": om_pct,
+                "nm_pct": nm_pct,
+                "capex_pct": capex_pct,
+                "qoq_rev_pct": qoq_rev,
+                "yoy_rev_pct": yoy_rev,
+            }
+        )
+
+    return quarters
+
+
 def fetch_yahoo_history(
     symbol: str, market: str, opener: urllib.request.OpenerDirector
 ) -> List[Dict[str, Any]]:
-    """從 Yahoo Finance v8/finance/chart 取得 1 年日 K 線資料"""
+    """從 Yahoo Finance v8/finance/chart 取得 2 年日 K 線資料（覆蓋 2025 至今與 MA200）"""
     encoded_sym = urllib.parse.quote(symbol, safe="")
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_sym}?range=1y&interval=1d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_sym}?range=2y&interval=1d"
     payload = http_get_json(url, opener=opener)
     res_list = payload.get("chart", {}).get("result")
     if not res_list:
@@ -209,8 +403,7 @@ def fetch_yahoo_history(
     volumes = quote.get("volume") or []
 
     tz_hours = 8 if market == "TW" else (9 if market in ("JP", "KR") else -5)
-    tz_offset = datetime.timedelta(hours=tz_hours)
-    tz = datetime.timezone(tz_offset)
+    tz = datetime.timezone(datetime.timedelta(hours=tz_hours))
 
     by_date: Dict[str, Dict[str, Any]] = {}
     for i, ts in enumerate(timestamps):
@@ -232,8 +425,7 @@ def fetch_yahoo_history(
             "v": int(round(v)),
         }
 
-    history = [by_date[k] for k in sorted(by_date.keys())]
-    return history
+    return [by_date[k] for k in sorted(by_date.keys())]
 
 
 def compute_sma(values: List[float], period: int) -> List[Optional[float]]:
@@ -299,13 +491,33 @@ def pct_return(closes: List[float], lookback: int) -> Optional[float]:
     return round(((closes[-1] - prev) / prev) * 100.0, 2)
 
 
-def analyze_stock(history: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], List[Dict[str, str]]]:
+def return_since_date(history: List[Dict[str, Any]], start_date: str) -> Optional[float]:
+    if len(history) < 2:
+        return None
+    base_bar = None
+    for r in history:
+        if r["d"] < start_date:
+            base_bar = r
+    if base_bar is None:
+        for r in history:
+            if r["d"] >= start_date:
+                base_bar = r
+                break
+    if not base_bar or not base_bar["c"]:
+        return None
+    return round(((history[-1]["c"] - base_bar["c"]) / base_bar["c"]) * 100.0, 2)
+
+
+def analyze_stock(
+    history: List[Dict[str, Any]], sox_metrics: Optional[Dict[str, Any]] = None
+) -> Tuple[Dict[str, Any], List[Dict[str, str]]]:
     closes = [row["c"] for row in history]
     volumes = [row["v"] for row in history]
 
     ma5 = compute_sma(closes, 5)
     ma20 = compute_sma(closes, 20)
     ma60 = compute_sma(closes, 60)
+    ma200 = compute_sma(closes, 200)
     rsi14 = compute_rsi(closes, 14)
 
     ema12 = compute_ema(closes, 12)
@@ -314,21 +526,24 @@ def analyze_stock(history: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], List[D
     dea = compute_ema(dif, 9)
     hist = [d - s for d, s in zip(dif, dea)]
 
-    # 近 6 個月 (約 126 個交易日) 高低與最大回撤
-    window_6m = history[-126:] if len(history) >= 126 else history
-    high_6m = max(r["h"] for r in window_6m)
-    low_6m = min(r["l"] for r in window_6m)
+    # 近 52 週 (約 252 個交易日) 與近 6 月高低
+    win_52w = history[-252:] if len(history) >= 252 else history
+    high_52w = max(r["h"] for r in win_52w)
+    low_52w = min(r["l"] for r in win_52w)
 
-    peak = window_6m[0]["c"]
+    win_6m = history[-126:] if len(history) >= 126 else history
+    high_6m = max(r["h"] for r in win_6m)
+    low_6m = min(r["l"] for r in win_6m)
+
+    peak = win_6m[0]["c"]
     max_dd = 0.0
-    for r in window_6m:
+    for r in win_6m:
         if r["c"] > peak:
             peak = r["c"]
         dd = (r["c"] - peak) / peak * 100.0
         if dd < max_dd:
             max_dd = dd
 
-    # 近 20 日年化波動率
     vol_20d = None
     if len(closes) >= 21:
         rets = [(closes[i] / closes[i - 1] - 1.0) for i in range(len(closes) - 20, len(closes)) if closes[i - 1] > 0]
@@ -344,6 +559,7 @@ def analyze_stock(history: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], List[D
     latest_ma5 = round(ma5[-1], 2) if ma5[-1] is not None else None
     latest_ma20 = round(ma20[-1], 2) if ma20[-1] is not None else None
     latest_ma60 = round(ma60[-1], 2) if ma60[-1] is not None else None
+    latest_ma200 = round(ma200[-1], 2) if ma200[-1] is not None else None
     latest_rsi = round(rsi14[-1], 2) if rsi14[-1] is not None else None
     latest_dif = round(dif[-1], 3) if dif else None
     latest_dea = round(dea[-1], 3) if dea else None
@@ -351,30 +567,57 @@ def analyze_stock(history: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], List[D
 
     bias_ma20 = round(((latest_c - latest_ma20) / latest_ma20) * 100.0, 2) if latest_ma20 else None
     bias_ma60 = round(((latest_c - latest_ma60) / latest_ma60) * 100.0, 2) if latest_ma60 else None
+    bias_ma200 = round(((latest_c - latest_ma200) / latest_ma200) * 100.0, 2) if latest_ma200 else None
+    dist_52w_high = round(((latest_c - high_52w) / high_52w) * 100.0, 2) if high_52w else None
+
+    cur_year = int(history[-1]["d"][:4])
+    ret_1d = pct_return(closes, 1)
+    ret_5d = pct_return(closes, 5)
+    ret_20d = pct_return(closes, 20)
+    ret_60d = pct_return(closes, 60)
+    ret_120d = pct_return(closes, 120)
+    ret_ytd = return_since_date(history, f"{cur_year}-01-01")
+    ret_from_2025 = return_since_date(history, "2025-01-01")
+
+    vs_sox_1m = round(ret_20d - sox_metrics["ret_20d"], 2) if (sox_metrics and ret_20d is not None and sox_metrics.get("ret_20d") is not None) else None
+    vs_sox_3m = round(ret_60d - sox_metrics["ret_60d"], 2) if (sox_metrics and ret_60d is not None and sox_metrics.get("ret_60d") is not None) else None
+    vs_sox_6m = round(ret_120d - sox_metrics["ret_120d"], 2) if (sox_metrics and ret_120d is not None and sox_metrics.get("ret_120d") is not None) else None
+    vs_sox_ytd = round(ret_ytd - sox_metrics["ret_ytd"], 2) if (sox_metrics and ret_ytd is not None and sox_metrics.get("ret_ytd") is not None) else None
 
     metrics = {
-        "ret_1d": pct_return(closes, 1),
-        "ret_5d": pct_return(closes, 5),
-        "ret_20d": pct_return(closes, 20),
-        "ret_60d": pct_return(closes, 60),
+        "ret_1d": ret_1d,
+        "ret_5d": ret_5d,
+        "ret_20d": ret_20d,
+        "ret_60d": ret_60d,
+        "ret_120d": ret_120d,
         "ret_6m": pct_return(closes, min(125, len(closes) - 1)),
+        "ret_ytd": ret_ytd,
+        "ret_from_2025": ret_from_2025,
         "high_6m": round(high_6m, 2),
         "low_6m": round(low_6m, 2),
+        "high_52w": round(high_52w, 2),
+        "low_52w": round(low_52w, 2),
+        "dist_52w_high": dist_52w_high,
         "max_drawdown_6m": round(max_dd, 2),
         "volatility_20d": vol_20d,
         "avg_volume_20d": avg_vol_20d,
         "ma5": latest_ma5,
         "ma20": latest_ma20,
         "ma60": latest_ma60,
+        "ma200": latest_ma200,
         "bias_ma20": bias_ma20,
         "bias_ma60": bias_ma60,
+        "bias_ma200": bias_ma200,
         "rsi14": latest_rsi,
         "macd_dif": latest_dif,
         "macd_dea": latest_dea,
         "macd_hist": latest_hist,
+        "vs_sox_1m": vs_sox_1m,
+        "vs_sox_3m": vs_sox_3m,
+        "vs_sox_6m": vs_sox_6m,
+        "vs_sox_ytd": vs_sox_ytd,
     }
 
-    # 自動生成客觀技術面訊號
     signals: List[Dict[str, str]] = []
     if latest_ma5 and latest_ma20 and latest_ma60:
         if latest_c > latest_ma5 > latest_ma20 > latest_ma60:
@@ -388,33 +631,11 @@ def analyze_stock(history: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], List[D
         else:
             signals.append({"type": "neutral", "label": "均線糾結震盪整理中"})
 
-    if len(ma5) >= 2 and len(ma20) >= 2 and ma5[-1] and ma20[-1] and ma5[-2] and ma20[-2]:
-        if ma5[-2] <= ma20[-2] and ma5[-1] > ma20[-1]:
-            signals.append({"type": "bull", "label": "MA5 向上突破 MA20（短中期黃金交叉）"})
-        elif ma5[-2] >= ma20[-2] and ma5[-1] < ma20[-1]:
-            signals.append({"type": "bear", "label": "MA5 向下跌破 MA20（短中期死亡交叉）"})
-
-    if latest_rsi is not None:
-        if latest_rsi >= 70:
-            signals.append({"type": "warn", "label": f"RSI(14) = {latest_rsi:.1f} 進入超買強勢區"})
-        elif latest_rsi <= 30:
-            signals.append({"type": "warn", "label": f"RSI(14) = {latest_rsi:.1f} 進入超賣反彈觀察區"})
-        elif latest_rsi >= 55:
-            signals.append({"type": "bull", "label": f"RSI(14) = {latest_rsi:.1f} 動能偏多"})
-        elif latest_rsi <= 45:
-            signals.append({"type": "bear", "label": f"RSI(14) = {latest_rsi:.1f} 動能偏弱"})
+    if latest_ma200 is not None:
+        if latest_c >= latest_ma200:
+            signals.append({"type": "bull", "label": f"站穩年線 MA200 之上（乖離 {bias_ma200:+.1f}%）"})
         else:
-            signals.append({"type": "neutral", "label": f"RSI(14) = {latest_rsi:.1f} 處於中性區間"})
-
-    if len(hist) >= 2:
-        if hist[-2] <= 0 < hist[-1]:
-            signals.append({"type": "bull", "label": "MACD 柱狀體翻紅（多方動能轉強）"})
-        elif hist[-2] >= 0 > hist[-1]:
-            signals.append({"type": "bear", "label": "MACD 柱狀體翻綠（空方動能增強）"})
-        elif hist[-1] > 0:
-            signals.append({"type": "bull", "label": "MACD DIF 位於訊號線上方"})
-        else:
-            signals.append({"type": "bear", "label": "MACD DIF 位於訊號線下方"})
+            signals.append({"type": "bear", "label": f"跌破年線 MA200 之下（乖離 {bias_ma200:+.1f}%）"})
 
     return metrics, signals
 
@@ -423,6 +644,7 @@ def main() -> int:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = json.load(f)
 
+    existing_fin_cache = load_existing_financials_cache()
     twse_vals = fetch_twse_valuations()
     tpex_vals = fetch_tpex_valuations()
     opener, crumb = create_yahoo_session()
@@ -430,109 +652,142 @@ def main() -> int:
     yahoo_symbols = [s["yahoo_symbol"] for s in config["stocks"]]
     yahoo_quotes = fetch_yahoo_quotes(yahoo_symbols, opener, crumb)
 
+    # 先取得 ^SOX 歷史作為相對超額報酬基準
+    sox_metrics: Optional[Dict[str, Any]] = None
+    history_by_id: Dict[str, List[Dict[str, Any]]] = {}
+
+    for item in config["stocks"]:
+        sid = item["id"]
+        ysym = item["yahoo_symbol"]
+        market = item["market"]
+        try:
+            history = fetch_yahoo_history(ysym, market, opener)
+            history_by_id[sid] = history
+            if sid == "^SOX" and len(history) >= 2:
+                sox_metrics, _ = analyze_stock(history, None)
+        except Exception as e:
+            print(f"  [WARN] 預先擷取 {sid} K 線失敗: {e}")
+        time.sleep(0.15)
+
     segment_map = {seg["id"]: seg["label"] for seg in config["segments"]}
     stocks_out: List[Dict[str, Any]] = []
 
-    tw_dates = []
-    us_dates = []
-    jp_dates = []
-    kr_dates = []
+    tw_dates, us_dates, jp_dates, kr_dates = [], [], [], []
 
     for item in config["stocks"]:
         stock_id = item["id"]
         ysym = item["yahoo_symbol"]
         market = item["market"]
-        print(f"-> 擷取 {stock_id} ({item['name']}) [{ysym}] ...")
+        print(f"-> 處理 {stock_id} ({item['name']}) [{ysym}] ...")
 
-        try:
-            history = fetch_yahoo_history(ysym, market, opener)
-            if len(history) < 2:
-                print(f"  [WARN] {stock_id} 歷史資料不足 ({len(history)} 筆)，跳過")
-                continue
+        history = history_by_id.get(stock_id) or []
+        if len(history) < 2:
+            print(f"  [WARN] {stock_id} 歷史資料不足 ({len(history)} 筆)，跳過")
+            continue
 
-            latest_bar = history[-1]
-            prev_bar = history[-2]
-            prev_close = prev_bar["c"]
-            change = round(latest_bar["c"] - prev_close, 2)
-            change_pct = round((change / prev_close) * 100.0, 2) if prev_close else 0.0
+        latest_bar = history[-1]
+        prev_bar = history[-2]
+        prev_close = prev_bar["c"]
+        change = round(latest_bar["c"] - prev_close, 2)
+        change_pct = round((change / prev_close) * 100.0, 2) if prev_close else 0.0
 
-            metrics, signals = analyze_stock(history)
+        metrics, signals = analyze_stock(history, None if stock_id == "^SOX" else sox_metrics)
 
-            # 結合官方估值資料
-            yq = yahoo_quotes.get(ysym, {})
-            if market == "TW":
-                if item.get("exchange") == "TPEx":
-                    official = tpex_vals.get(stock_id, {})
-                else:
-                    official = twse_vals.get(stock_id, {})
-                fundamentals = {
-                    "pe": official.get("pe") if official.get("pe") is not None else yq.get("pe"),
-                    "forward_pe": yq.get("forward_pe"),
-                    "pb": official.get("pb") if official.get("pb") is not None else yq.get("pb"),
-                    "dividend_yield": (
-                        official.get("dividend_yield")
-                        if official.get("dividend_yield") is not None
-                        else yq.get("dividend_yield")
-                    ),
-                    "market_cap": yq.get("market_cap"),
-                    "valuation_date": official.get("valuation_date"),
-                }
-                tw_dates.append(latest_bar["d"])
+        yq = yahoo_quotes.get(ysym, {})
+        ysum = fetch_yahoo_summary(ysym, opener, crumb)
+        quarters = fetch_yahoo_quarterly_financials(
+            ysym, opener, existing_fin_cache.get(stock_id, {})
+        )
+
+        fin_currency = ysum.get("financial_currency") or yq.get("financial_currency") or item["currency"]
+
+        if market == "TW":
+            official = tpex_vals.get(stock_id, {}) if item.get("exchange") == "TPEx" else twse_vals.get(stock_id, {})
+            fundamentals = {
+                "pe": official.get("pe") if official.get("pe") is not None else yq.get("pe"),
+                "forward_pe": ysum.get("forward_pe") or yq.get("forward_pe"),
+                "pb": official.get("pb") if official.get("pb") is not None else yq.get("pb"),
+                "ev_ebitda": ysum.get("ev_ebitda"),
+                "ps": ysum.get("ps"),
+                "dividend_yield": official.get("dividend_yield") if official.get("dividend_yield") is not None else yq.get("dividend_yield"),
+                "gross_margin": ysum.get("gross_margin"),
+                "operating_margin": ysum.get("operating_margin"),
+                "revenue_growth": ysum.get("revenue_growth"),
+                "market_cap": yq.get("market_cap"),
+                "earnings_date": ysum.get("earnings_date"),
+                "valuation_date": official.get("valuation_date"),
+            }
+            tw_dates.append(latest_bar["d"])
+        else:
+            fundamentals = {
+                "pe": yq.get("pe"),
+                "forward_pe": ysum.get("forward_pe") or yq.get("forward_pe"),
+                "pb": yq.get("pb"),
+                "ev_ebitda": ysum.get("ev_ebitda"),
+                "ps": ysum.get("ps"),
+                "dividend_yield": yq.get("dividend_yield"),
+                "gross_margin": ysum.get("gross_margin"),
+                "operating_margin": ysum.get("operating_margin"),
+                "revenue_growth": ysum.get("revenue_growth"),
+                "market_cap": yq.get("market_cap"),
+                "earnings_date": ysum.get("earnings_date"),
+                "valuation_date": latest_bar["d"],
+            }
+            if market == "JP":
+                jp_dates.append(latest_bar["d"])
+            elif market == "KR":
+                kr_dates.append(latest_bar["d"])
             else:
-                fundamentals = {
-                    "pe": yq.get("pe"),
-                    "forward_pe": yq.get("forward_pe"),
-                    "pb": yq.get("pb"),
-                    "dividend_yield": yq.get("dividend_yield"),
-                    "market_cap": yq.get("market_cap"),
-                    "valuation_date": latest_bar["d"],
-                }
-                if market == "JP":
-                    jp_dates.append(latest_bar["d"])
-                elif market == "KR":
-                    kr_dates.append(latest_bar["d"])
-                else:
-                    us_dates.append(latest_bar["d"])
+                us_dates.append(latest_bar["d"])
 
-            stocks_out.append(
-                {
-                    "id": stock_id,
-                    "yahoo_symbol": ysym,
-                    "name": item["name"],
-                    "en_name": item["en_name"],
-                    "market": market,
-                    "exchange": item["exchange"],
-                    "currency": item["currency"],
-                    "segment": item["segment"],
-                    "segment_label": segment_map.get(item["segment"], item["segment"]),
-                    "tagline": item["tagline"],
-                    "featured": bool(item.get("featured", False)),
-                    "is_index": bool(item.get("is_index", False)),
-                    "latest": {
-                        "date": latest_bar["d"],
-                        "open": latest_bar["o"],
-                        "high": latest_bar["h"],
-                        "low": latest_bar["l"],
-                        "close": latest_bar["c"],
-                        "prev_close": prev_close,
-                        "change": change,
-                        "change_pct": change_pct,
-                        "volume": latest_bar["v"],
-                    },
-                    "metrics": metrics,
-                    "fundamentals": fundamentals,
-                    "signals": signals,
-                    "history": history,
-                }
-            )
-            print(
-                f"  [OK] {latest_bar['d']} 收盤 {latest_bar['c']} ({change_pct:+.2f}%) | "
-                f"PE={fundamentals['pe']} PB={fundamentals['pb']} RSI={metrics['rsi14']}"
-            )
-        except Exception as e:
-            print(f"  [ERROR] 擷取 {stock_id} 失敗: {e}")
+        # 若最新一季有算出毛利率而 quoteSummary 缺值，自動補齊
+        if quarters:
+            lq = quarters[-1]
+            if fundamentals.get("gross_margin") is None and lq.get("gm_pct") is not None:
+                fundamentals["gross_margin"] = lq["gm_pct"]
+            if fundamentals.get("operating_margin") is None and lq.get("om_pct") is not None:
+                fundamentals["operating_margin"] = lq["om_pct"]
 
-        time.sleep(0.25)
+        stocks_out.append(
+            {
+                "id": stock_id,
+                "yahoo_symbol": ysym,
+                "name": item["name"],
+                "en_name": item["en_name"],
+                "market": market,
+                "exchange": item["exchange"],
+                "currency": item["currency"],
+                "segment": item["segment"],
+                "segment_label": segment_map.get(item["segment"], item["segment"]),
+                "tagline": item["tagline"],
+                "featured": bool(item.get("featured", False)),
+                "is_index": bool(item.get("is_index", False)),
+                "latest": {
+                    "date": latest_bar["d"],
+                    "open": latest_bar["o"],
+                    "high": latest_bar["h"],
+                    "low": latest_bar["l"],
+                    "close": latest_bar["c"],
+                    "prev_close": prev_close,
+                    "change": change,
+                    "change_pct": change_pct,
+                    "volume": latest_bar["v"],
+                },
+                "metrics": metrics,
+                "fundamentals": fundamentals,
+                "financials": {
+                    "currency": fin_currency,
+                    "quarters": quarters,
+                },
+                "signals": signals,
+                "history": history,
+            }
+        )
+        print(
+            f"  [OK] {latest_bar['d']} close={latest_bar['c']} ({change_pct:+.2f}%) | "
+            f"MA200={metrics['ma200']} GM={fundamentals['gross_margin']}% Quarters={len(quarters)}"
+        )
+        time.sleep(0.15)
 
     if not stocks_out:
         print("[FAIL] 未能成功取得任何股票資料", file=sys.stderr)

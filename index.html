@@ -62,10 +62,11 @@
 
     <!-- 四大分析工作區分頁 -->
     <nav class="nav-tabs" aria-label="分析功能分頁">
-      <button class="nav-tab active" data-tab="terminal">📊 個股技術分析終端</button>
-      <button class="nav-tab" data-tab="supply">🔗 供應鏈全景與基本面矩陣</button>
-      <button class="nav-tab" data-tab="compare">⚡ 多股走勢對比與排行</button>
-      <button class="nav-tab" data-tab="pipeline">⚙️ 自選股與自動更新機制</button>
+      <button class="nav-tab active" data-tab="terminal">📊 個股技術終端</button>
+      <button class="nav-tab" data-tab="supply">🕸️ 台美日韓供應鏈圖</button>
+      <button class="nav-tab" data-tab="financials">📑 2025 財報與估值趨勢</button>
+      <button class="nav-tab" data-tab="compare">⚡ 多股對比與排行</button>
+      <button class="nav-tab" data-tab="pipeline">⚙️ 自選與自動更新</button>
     </nav>
 
     <!-- 分頁 1：個股技術分析終端 -->
@@ -94,7 +95,9 @@
                   <button class="tool-btn chart-range-btn" data-range="1M">1M</button>
                   <button class="tool-btn chart-range-btn active" data-range="3M">3M</button>
                   <button class="tool-btn chart-range-btn" data-range="6M">6M</button>
-                  <button class="tool-btn chart-range-btn" data-range="ALL">1Y</button>
+                  <button class="tool-btn chart-range-btn" data-range="1Y">1Y</button>
+                  <button class="tool-btn chart-range-btn" data-range="FROM_2025">2025起</button>
+                  <button class="tool-btn chart-range-btn" data-range="2Y">2Y</button>
                 </div>
               </div>
 
@@ -102,6 +105,7 @@
                 <label class="chk-chip"><input type="checkbox" id="chkMa5"><span class="swatch" style="background:#fbbf24"></span>MA5</label>
                 <label class="chk-chip"><input type="checkbox" id="chkMa20"><span class="swatch" style="background:#38bdf8"></span>MA20</label>
                 <label class="chk-chip"><input type="checkbox" id="chkMa60"><span class="swatch" style="background:#a78bfa"></span>MA60</label>
+                <label class="chk-chip"><input type="checkbox" id="chkMa200"><span class="swatch" style="background:#2dd4bf"></span>MA200</label>
                 <label class="chk-chip"><input type="checkbox" id="chkBB"><span class="swatch" style="background:#818cf8"></span>布林通道</label>
               </div>
 
@@ -191,7 +195,122 @@
       </div>
     </section>
 
-    <!-- 分頁 3：多股走勢對比與強弱排行 -->
+    <!-- 分頁 3：2025 至今財報與估值趨勢 -->
+    <section class="tab-panel" id="tab-financials">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">📑 2025 至今季度財報趨勢分析（營收・雙率・自由現金流・資本支出）</div>
+          <span style="font-size:0.75rem;color:var(--text-dim)">點選任一半導體個股查看各季趨勢，並與同業進行前瞻估值對比</span>
+        </div>
+        <div class="compare-controls" id="finStockSelector"></div>
+        <div id="finHeroWrap"></div>
+      </div>
+
+      <div class="fin-charts-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 單季營收 × 營業利益 × 淨利趨勢</div>
+            <div class="fin-legend">
+              <span><i class="swatch" style="background:#38bdf8"></i> 營收</span>
+              <span><i class="swatch" style="background:#818cf8"></i> 營業利益</span>
+              <span><i class="swatch" style="background:#f472b6"></i> 淨利</span>
+            </div>
+          </div>
+          <div class="chart-canvas-box">
+            <div class="chart-hud" id="finRevHud"></div>
+            <canvas id="finRevCanvas" class="chart-canvas"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📈 毛利率 / 營業利益率 / 淨利率 三率走勢</div>
+            <div class="fin-legend">
+              <span><i class="swatch" style="background:#fbbf24"></i> 毛利率</span>
+              <span><i class="swatch" style="background:#38bdf8"></i> 營益率</span>
+              <span><i class="swatch" style="background:#f472b6"></i> 淨利率</span>
+            </div>
+          </div>
+          <div class="chart-canvas-box">
+            <div class="chart-hud" id="finMarginHud"></div>
+            <canvas id="finMarginCanvas" class="chart-canvas"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏭 營業現金流 vs 資本支出 (CapEx) vs FCF</div>
+            <div class="fin-legend">
+              <span><i class="swatch" style="background:#38bdf8"></i> 營業現金流</span>
+              <span><i class="swatch" style="background:#fbbf24"></i> CapEx</span>
+              <span><i class="swatch" style="background:#00d084"></i> FCF</span>
+            </div>
+          </div>
+          <div class="chart-canvas-box">
+            <div class="chart-hud" id="finCfHud"></div>
+            <canvas id="finCfCanvas" class="chart-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title" id="finTableTitle">📋 季度財報明細表</div>
+          <span style="font-size:0.74rem;color:var(--text-dim)" id="finCurrencyNote"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>季度</th>
+                <th>結算日</th>
+                <th>單季營收</th>
+                <th>季增 QoQ</th>
+                <th>毛利</th>
+                <th>毛利率</th>
+                <th>營業利益</th>
+                <th>營益率</th>
+                <th>淨利</th>
+                <th>稀釋 EPS</th>
+                <th>資本支出 CapEx</th>
+                <th>自由現金流 FCF</th>
+                <th>CapEx/營收</th>
+              </tr>
+            </thead>
+            <tbody id="finQuartersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚖️ 跨市場同業估值與獲利品質矩陣（對齊機構研報指標）</div>
+          <div class="sidebar-filter-row" id="peerSegmentFilters" style="margin-bottom:0"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="peerMatrixTable">
+            <thead>
+              <tr>
+                <th data-psort="id">標的 / 地區</th>
+                <th data-psort="mcap">市值</th>
+                <th data-psort="pe">Trailing P/E</th>
+                <th data-psort="fpe">Forward P/E</th>
+                <th data-psort="ev_ebitda">EV/EBITDA</th>
+                <th data-psort="ps">P/S</th>
+                <th data-psort="gm">毛利率</th>
+                <th data-psort="om">營益率</th>
+                <th data-psort="rev_g">營收年增</th>
+                <th data-psort="vs_sox_3m">相對SOX(3M)</th>
+                <th data-psort="earnings_date">下次財報日</th>
+              </tr>
+            </thead>
+            <tbody id="peerMatrixTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分頁 4：多股走勢對比與強弱排行 -->
     <section class="tab-panel" id="tab-compare">
       <div class="card">
         <div class="card-header">
@@ -209,7 +328,9 @@
               <button class="tool-btn cmp-range-btn" data-range="1M">1M</button>
               <button class="tool-btn cmp-range-btn active" data-range="3M">3M</button>
               <button class="tool-btn cmp-range-btn" data-range="6M">6M</button>
-              <button class="tool-btn cmp-range-btn" data-range="ALL">1Y</button>
+              <button class="tool-btn cmp-range-btn" data-range="1Y">1Y</button>
+              <button class="tool-btn cmp-range-btn" data-range="FROM_2025">2025起</button>
+              <button class="tool-btn cmp-range-btn" data-range="2Y">2Y</button>
             </div>
           </div>
         </div>
