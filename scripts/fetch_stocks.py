@@ -208,7 +208,8 @@ def fetch_yahoo_history(
     closes = quote.get("close") or []
     volumes = quote.get("volume") or []
 
-    tz_offset = datetime.timedelta(hours=8 if market == "TW" else -5)
+    tz_hours = 8 if market == "TW" else (9 if market in ("JP", "KR") else -5)
+    tz_offset = datetime.timedelta(hours=tz_hours)
     tz = datetime.timezone(tz_offset)
 
     by_date: Dict[str, Dict[str, Any]] = {}
@@ -434,6 +435,8 @@ def main() -> int:
 
     tw_dates = []
     us_dates = []
+    jp_dates = []
+    kr_dates = []
 
     for item in config["stocks"]:
         stock_id = item["id"]
@@ -484,7 +487,12 @@ def main() -> int:
                     "market_cap": yq.get("market_cap"),
                     "valuation_date": latest_bar["d"],
                 }
-                us_dates.append(latest_bar["d"])
+                if market == "JP":
+                    jp_dates.append(latest_bar["d"])
+                elif market == "KR":
+                    kr_dates.append(latest_bar["d"])
+                else:
+                    us_dates.append(latest_bar["d"])
 
             stocks_out.append(
                 {
@@ -535,6 +543,8 @@ def main() -> int:
         "generated_at": datetime.datetime.now(tz=tz_tw).isoformat(timespec="seconds"),
         "data_date_tw": max(tw_dates) if tw_dates else None,
         "data_date_us": max(us_dates) if us_dates else None,
+        "data_date_jp": max(jp_dates) if jp_dates else None,
+        "data_date_kr": max(kr_dates) if kr_dates else None,
         "segments": config["segments"],
         "stocks": stocks_out,
     }

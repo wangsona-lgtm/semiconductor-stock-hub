@@ -57,6 +57,9 @@
   function fmtPrice(v, stock) {
     if (v === null || v === undefined || Number.isNaN(v)) return "—";
     const num = Number(v);
+    if (stock && (stock.currency === "JPY" || stock.currency === "KRW")) {
+      return Math.round(num).toLocaleString("en-US");
+    }
     if (stock && stock.currency === "TWD") {
       return num >= 1000 ? num.toLocaleString("en-US", { maximumFractionDigits: 2 }) : num.toFixed(num % 1 === 0 ? 1 : 2);
     }
@@ -100,6 +103,12 @@
     if (stock && stock.currency === "USD") {
       if (v >= 1e12) return "$" + (v / 1e12).toFixed(2) + "T";
       return "$" + (v / 1e9).toFixed(1) + "B";
+    }
+    if (stock && stock.currency === "JPY") {
+      return "¥" + (v / 1e12).toFixed(2) + "兆";
+    }
+    if (stock && stock.currency === "KRW") {
+      return "₩" + (v / 1e12).toFixed(1) + "兆";
     }
     if (v >= 1e12) return (v / 1e12).toFixed(2) + "兆";
     return (v / 1e8).toFixed(0) + "億";
@@ -165,18 +174,19 @@
     if (!el || !state.data) return;
     const twD = state.data.data_date_tw || "—";
     const usD = state.data.data_date_us || "—";
+    const jkD = state.data.data_date_jp || state.data.data_date_kr || "";
     let genTime = "";
     if (state.data.generated_at) {
       const m = String(state.data.generated_at).match(/T(\d{2}:\d{2})/);
       if (m) genTime = ` ｜ 更新 ${m[1]}`;
     }
-    el.textContent = `台股 ${twD} ｜ 美股 ${usD}${genTime}`;
+    el.textContent = `台 ${twD} ｜ 美 ${usD}${jkD ? ` ｜ 日韓 ${jkD}` : ""}${genTime}`;
   }
 
   function renderTickerStrip() {
     const el = document.getElementById("tickerStrip");
     if (!el) return;
-    const featuredIds = ["^SOX", "2330", "NVDA", "TSM", "INTC", "2454", "3661", "3711", "ASML", "AVGO", "6488"];
+    const featuredIds = ["^SOX", "2330", "NVDA", "TSM", "INTC", "8035.T", "6857.T", "005930.KS", "000660.KS", "2454", "3661", "3711", "ASML", "AVGO"];
     const items = featuredIds.map((id) => state.stocksById.get(id)).filter(Boolean);
     el.innerHTML = items
       .map((s) => {
@@ -399,8 +409,8 @@
           <div class="mini-stat-val mono">${s.fundamentals.pb ? s.fundamentals.pb + "x" : "—"}</div>
         </div>
         <div class="mini-stat">
-          <div class="mini-stat-label">${s.market === "US" && s.fundamentals.market_cap ? "殖利率 / 市值" : "殖利率 (Yield)"}</div>
-          <div class="mini-stat-val mono">${s.fundamentals.dividend_yield !== null && s.fundamentals.dividend_yield !== undefined ? s.fundamentals.dividend_yield + "%" : "—"}${s.market === "US" && s.fundamentals.market_cap ? ` · ${fmtMcap(s.fundamentals.market_cap, s)}` : ""}</div>
+          <div class="mini-stat-label">${s.market !== "TW" && s.fundamentals.market_cap ? "殖利率 / 市值" : "殖利率 (Yield)"}</div>
+          <div class="mini-stat-val mono">${s.fundamentals.dividend_yield !== null && s.fundamentals.dividend_yield !== undefined ? s.fundamentals.dividend_yield + "%" : "—"}${s.market !== "TW" && s.fundamentals.market_cap ? ` · ${fmtMcap(s.fundamentals.market_cap, s)}` : ""}</div>
         </div>
       </div>
 
@@ -724,7 +734,7 @@
       statusEl.innerHTML = `
         <div><strong>上次排程產生時間：</strong><span class="mono" style="color:var(--cyan)">${genText} (UTC+8)</span></div>
         <div style="margin-top:4px;color:var(--text-muted)">
-          台股最新交易日：<span class="mono">${state.data.data_date_tw || "—"}</span> ｜ 美股最新交易日：<span class="mono">${state.data.data_date_us || "—"}</span> ｜ 追蹤標的：<span class="mono">${state.data.stocks.length} 檔</span>
+          台股：<span class="mono">${state.data.data_date_tw || "—"}</span> ｜ 美股：<span class="mono">${state.data.data_date_us || "—"}</span> ｜ 日股：<span class="mono">${state.data.data_date_jp || "—"}</span> ｜ 韓股：<span class="mono">${state.data.data_date_kr || "—"}</span> ｜ 追蹤標的：<span class="mono">${state.data.stocks.length} 檔</span>
         </div>
       `;
     }
@@ -866,9 +876,11 @@
       btn.addEventListener("click", () => {
         const map = {
           tsmc: ["2330", "TSM", "NVDA", "^SOX"],
+          hbm_memory: ["000660.KS", "005930.KS", "MU", "2330"],
+          jp_kr_semi: ["8035.T", "6857.T", "4063.T", "6146.T", "005930.KS", "000660.KS"],
           ai_asic: ["2454", "3661", "3443", "AVGO"],
-          foundry_equip: ["2330", "2303", "ASML", "6488", "3131"],
-          us_sox: ["^SOX", "NVDA", "AMD", "AVGO", "MU"],
+          foundry_equip: ["2330", "8035.T", "ASML", "4063.T", "6488", "3131"],
+          us_sox: ["^SOX", "NVDA", "AMD", "INTC", "AVGO", "MU"],
         };
         state.compareIds = (map[btn.dataset.preset] || ["2330", "NVDA"]).filter((id) => state.stocksById.has(id));
         renderCompareTab();

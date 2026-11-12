@@ -23,8 +23,8 @@
           </svg>
         </div>
         <div>
-          <div class="brand-title">SEMI·PULSE <span class="accent">半導體股情終端</span></div>
-          <div class="brand-sub">台股半導體供應鏈 × 美股費半指標｜技術線圖・基本面估值・每日自動更新</div>
+          <div class="brand-title">SEMI·PULSE <span class="accent">台美日韓半導體股情終端</span></div>
+          <div class="brand-sub">台灣供應鏈 × 美股費半 × 日本設備材料 × 韓國記憶體代工｜技術線圖・每日自動更新</div>
         </div>
       </div>
 
@@ -155,7 +155,7 @@
       <div class="card" style="margin-bottom:16px">
         <div class="card-header">
           <div class="card-title">🎯 本益比 (P/E) × 近 20 日動能四象限分佈圖</div>
-          <div id="scatterInfo" style="font-size:0.78rem;color:var(--text-muted)">將滑鼠移至圓點檢視估值明細（藍色外框＝台股、紫色外框＝美股）</div>
+          <div id="scatterInfo" style="font-size:0.78rem;color:var(--text-muted)">將滑鼠移至圓點檢視估值明細（青藍＝台股、紫色＝美股、粉紅＝日股、金色＝韓股）</div>
         </div>
         <div class="chart-canvas-box">
           <canvas id="scatterCanvas" class="chart-canvas"></canvas>
@@ -199,6 +199,8 @@
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
             <div class="btn-group">
               <button class="tool-btn preset-btn" data-preset="tsmc">台積電雙雄 vs NVDA</button>
+              <button class="tool-btn preset-btn" data-preset="hbm_memory">HBM 記憶體三強</button>
+              <button class="tool-btn preset-btn" data-preset="jp_kr_semi">日韓半導體指標</button>
               <button class="tool-btn preset-btn" data-preset="ai_asic">AI ASIC 設計</button>
               <button class="tool-btn preset-btn" data-preset="foundry_equip">晶圓與設備</button>
               <button class="tool-btn preset-btn" data-preset="us_sox">美股費半核心</button>

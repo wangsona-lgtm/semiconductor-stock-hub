@@ -98,7 +98,7 @@ window.SemiCharts = (function () {
     const chartH = window.innerWidth < 640 ? 390 : 450;
     const { ctx, width, height } = setupHiDPI(canvas, chartH);
 
-    const pad = { left: 12, right: 70, top: 14, bottom: 26 };
+    const pad = { left: 12, right: 82, top: 14, bottom: 26 };
     const mainTop = pad.top;
     const mainH = Math.floor((height - pad.top - pad.bottom) * 0.67);
     const gapH = 18;
@@ -420,9 +420,9 @@ window.SemiCharts = (function () {
 
       // 右側價格膠囊
       const pillY = Math.max(mainTop + 8, Math.min(mainTop + mainH - 8, yPrice));
-      const pText = activeClose >= 10000 ? activeClose.toFixed(1) : activeClose.toFixed(2);
+      const pText = activeClose >= 10000 ? Math.round(activeClose).toLocaleString("en-US") : activeClose.toFixed(2);
       ctx.fillStyle = hoverIdx !== null ? "#0284c7" : (bars[n - 1].c >= bars[Math.max(0, n - 2)].c ? COLORS.up : COLORS.down);
-      ctx.fillRect(pad.left + plotW + 2, pillY - 9, 66, 18);
+      ctx.fillRect(pad.left + plotW + 2, pillY - 9, 76, 18);
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 10.5px 'JetBrains Mono', Consolas, monospace";
       ctx.textAlign = "left";
@@ -545,12 +545,13 @@ window.SemiCharts = (function () {
     ctx.textAlign = "center";
     ctx.fillText(`本益比 P/E（平均 ${avgPe.toFixed(1)}x，>120x 未納入縮放）`, pad.left + plotW / 2, height - 14);
 
+    const mktColor = { TW: "#38bdf8", US: "#a78bfa", JP: "#f472b6", KR: "#fbbf24" };
     const points = valid.map((s) => ({
       stock: s,
       x: xFor(s.fundamentals.pe),
       y: yFor(s.metrics.ret_20d),
       r: s.market === "TW" ? 7.5 : 8.5,
-      color: s.market === "TW" ? "#38bdf8" : "#a78bfa",
+      color: mktColor[s.market] || "#a78bfa",
     }));
 
     function drawPoints(activePt = null) {
@@ -593,7 +594,7 @@ window.SemiCharts = (function () {
         infoEl.innerHTML = `<strong>${s.id} ${s.name}</strong> ｜ P/E <span class="mono">${s.fundamentals.pe}x</span> ｜ P/B <span class="mono">${s.fundamentals.pb ?? "—"}</span> ｜ 20日報酬 <span class="mono ${retCls}">${s.metrics.ret_20d >= 0 ? "+" : ""}${s.metrics.ret_20d}%</span>（點擊跳轉個股技術分析）`;
         canvas.style.cursor = "pointer";
       } else {
-        infoEl.textContent = "將滑鼠移至圓點檢視估值明細（藍色外框＝台股、紫色外框＝美股）";
+        infoEl.textContent = "將滑鼠移至圓點檢視估值明細（青藍＝台股、紫色＝美股、粉紅＝日股、金色＝韓股）";
         canvas.style.cursor = "default";
       }
     };

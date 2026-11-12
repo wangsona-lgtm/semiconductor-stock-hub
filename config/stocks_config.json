@@ -1,40 +1,54 @@
 {
-  "title": "SEMI·PULSE 半導體股票分析終端",
+  "title": "SEMI·PULSE 台美日韓半導體股票分析終端",
   "segments": [
     {
       "id": "ic_design",
-      "label": "IC 設計",
-      "en_label": "IC Design",
+      "label": "台·IC設計",
+      "en_label": "TW IC Design",
       "order": 1,
-      "description": "運算晶片、AI ASIC 客製化設計、通訊與高速介面 IP"
+      "description": "台灣運算晶片、AI ASIC 客製化設計與高速介面 IP"
     },
     {
       "id": "foundry",
-      "label": "晶圓代工",
-      "en_label": "Foundry",
+      "label": "台·晶圓代工",
+      "en_label": "TW Foundry",
       "order": 2,
       "description": "先進製程微縮、CoWoS 先進封裝產能與成熟特殊製程"
     },
     {
       "id": "osat",
-      "label": "封裝測試",
-      "en_label": "OSAT",
+      "label": "台·封裝測試",
+      "en_label": "TW OSAT",
       "order": 3,
       "description": "2.5D/3D 先進封裝、高階 AI GPU 成品測試與晶圓測試"
     },
     {
       "id": "equipment",
-      "label": "設備材料",
-      "en_label": "Equipment & Materials",
+      "label": "台·設備材料",
+      "en_label": "TW Equipment",
       "order": 4,
-      "description": "半導體矽晶圓、濕製程設備與先進封裝關鍵耗材"
+      "description": "台灣半導體矽晶圓、濕製程設備與先進封裝關鍵耗材"
     },
     {
       "id": "us_semi",
-      "label": "美股費半指標",
-      "en_label": "US SOX Leaders",
+      "label": "美·費半與IDM",
+      "en_label": "US SOX & IDM",
       "order": 5,
-      "description": "費城半導體指數與全球 AI 晶片、微影設備、記憶體龍頭"
+      "description": "費城半導體指數與美國 AI GPU、ASIC、微影與 IDM 大廠"
+    },
+    {
+      "id": "jp_semi",
+      "label": "日·設備與材料",
+      "en_label": "JP Semi Leaders",
+      "order": 6,
+      "description": "日本半導體塗佈顯影/蝕刻/測試/切割設備與矽晶圓光阻霸主"
+    },
+    {
+      "id": "kr_semi",
+      "label": "韓·記憶體與代工",
+      "en_label": "KR Memory & Foundry",
+      "order": 7,
+      "description": "韓國全球 HBM 高頻寬記憶體、DRAM 與先進製程雙雄"
     }
   ],
   "stocks": [
@@ -253,6 +267,78 @@
       "currency": "USD",
       "segment": "us_semi",
       "tagline": "x86 處理器大廠與 IDM 2.0 晶圓代工（Intel Foundry）轉型指標",
+      "featured": true
+    },
+    {
+      "id": "8035.T",
+      "yahoo_symbol": "8035.T",
+      "name": "東京威力科創",
+      "en_name": "Tokyo Electron",
+      "market": "JP",
+      "exchange": "TSE",
+      "currency": "JPY",
+      "segment": "jp_semi",
+      "tagline": "日本第一大半導體設備商，全球塗佈顯影與蝕刻設備霸主",
+      "featured": true
+    },
+    {
+      "id": "6857.T",
+      "yahoo_symbol": "6857.T",
+      "name": "愛德萬測試",
+      "en_name": "Advantest",
+      "market": "JP",
+      "exchange": "TSE",
+      "currency": "JPY",
+      "segment": "jp_semi",
+      "tagline": "全球 AI GPU、SoC 與 HBM 高階自動化測試機台雙雄",
+      "featured": true
+    },
+    {
+      "id": "4063.T",
+      "yahoo_symbol": "4063.T",
+      "name": "信越化學",
+      "en_name": "Shin-Etsu Chemical",
+      "market": "JP",
+      "exchange": "TSE",
+      "currency": "JPY",
+      "segment": "jp_semi",
+      "tagline": "全球市占第一 12 吋半導體矽晶圓與 EUV 光阻劑龍頭",
+      "featured": false
+    },
+    {
+      "id": "6146.T",
+      "yahoo_symbol": "6146.T",
+      "name": "DISCO 迪思科",
+      "en_name": "DISCO Corp",
+      "market": "JP",
+      "exchange": "TSE",
+      "currency": "JPY",
+      "segment": "jp_semi",
+      "tagline": "晶圓切割、研磨與 CoWoS / HBM 薄化製程設備市占霸主",
+      "featured": false
+    },
+    {
+      "id": "005930.KS",
+      "yahoo_symbol": "005930.KS",
+      "name": "三星電子",
+      "en_name": "Samsung Electronics",
+      "market": "KR",
+      "exchange": "KRX",
+      "currency": "KRW",
+      "segment": "kr_semi",
+      "tagline": "全球記憶體龍頭與 3nm/2nm GAA 先進製程晶圓代工大廠",
+      "featured": true
+    },
+    {
+      "id": "000660.KS",
+      "yahoo_symbol": "000660.KS",
+      "name": "SK海力士",
+      "en_name": "SK hynix",
+      "market": "KR",
+      "exchange": "KRX",
+      "currency": "KRW",
+      "segment": "kr_semi",
+      "tagline": "全球 HBM3 / HBM3E 高頻寬記憶體市占第一，NVIDIA 核心供應商",
       "featured": true
     }
   ]
